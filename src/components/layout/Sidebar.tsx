@@ -8,9 +8,11 @@ import {
   Settings as SettingsIcon,
   PlusCircle,
   X,
+  ChevronRight,
 } from 'lucide-react';
 import logoImg from '../../assets/logo3.png';
 import { useProductStore } from '../../store/productStore';
+import { useSettingsStore } from '../../store/settingsStore';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -19,6 +21,8 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const { products } = useProductStore();
+  const { settings } = useSettingsStore();
+
   const lowStockCount = products.filter(
     (p) => p.type === 'product' && (p.stock ?? 0) <= (p.lowStockThreshold ?? 5)
   ).length;
@@ -35,6 +39,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     { name: 'Clients', to: '/clients', icon: Users },
     { name: 'Settings', to: '/settings', icon: SettingsIcon },
   ];
+
+  const businessName = settings.business.name || 'EgolePay Hub';
 
   return (
     <>
@@ -98,7 +104,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                 className={({ isActive }) =>
                   `flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
                     isActive
-                      ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 font-semibold'
+                      ? 'bg-orange-50 text-[#FF7916] dark:bg-orange-950/40 dark:text-orange-400 font-semibold'
                       : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100'
                   }`
                 }
@@ -118,20 +124,37 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         </nav>
 
         {/* Business snippet footer */}
-        {/* <div className="p-4 m-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800">
-          <div className="flex items-center gap-2.5 mb-1">
-            <div className="w-2 h-2 rounded-full bg-emerald-500" />
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Active Business
-            </span>
-          </div>
-          <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
-            {settings.business.name || 'Set Business Name'}
-          </p>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-            {settings.business.email || 'billing@domain.com'}
-          </p>
-        </div> */}
+        <div className="p-3 border-t border-slate-200 dark:border-slate-800">
+          <NavLink
+            to="/settings"
+            onClick={onClose}
+            className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-colors group"
+            title="Business profile and preferences"
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              {settings.business.logo ? (
+                <img
+                  src={settings.business.logo}
+                  alt={businessName}
+                  className="w-8 h-8 rounded-lg object-contain bg-white p-0.5 border border-slate-200 dark:border-slate-700 shrink-0"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-950/80 text-[#FF7916] font-bold text-xs flex items-center justify-center shrink-0">
+                  {businessName.charAt(0).toUpperCase()}
+                </div>
+              )}
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate group-hover:text-[#FF7916] transition-colors">
+                  {businessName}
+                </p>
+                <p className="text-[10px] text-slate-400 truncate">
+                  {settings.business.email || 'Settings & Defaults'}
+                </p>
+              </div>
+            </div>
+            <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200 shrink-0 ml-1" />
+          </NavLink>
+        </div>
       </aside>
     </>
   );

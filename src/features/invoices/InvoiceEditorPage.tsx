@@ -226,9 +226,9 @@ export const InvoiceEditorPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto pb-16">
+    <div className="space-y-6 max-w-4xl mx-auto pb-28 sm:pb-16">
       {/* 1. Sticky Action & Navigation Bar */}
-      <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3.5 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs print:hidden">
+      <div className="sticky top-16 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3.5 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs print:hidden">
         {/* Left: Breadcrumbs, Title & Live Total */}
         <div className="flex flex-wrap items-center gap-3">
           <Button
@@ -262,8 +262,8 @@ export const InvoiceEditorPage: React.FC = () => {
         </div>
 
         {/* Right: Actions */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          {/* Preview Button: Opens full document preview */}
+        <div className="hidden md:flex items-center gap-2.5">
+          {/* Preview Button */}
           <Button
             type="button"
             variant="outline"
@@ -272,7 +272,7 @@ export const InvoiceEditorPage: React.FC = () => {
             icon={<Eye className="w-4 h-4 text-[#FF7916]" />}
             className="rounded-xl border-orange-200 dark:border-orange-900/60 hover:bg-orange-50 dark:hover:bg-orange-950/30 font-semibold text-slate-700 dark:text-slate-200"
           >
-            Preview Invoice
+            Preview
           </Button>
 
           <Button
@@ -307,51 +307,45 @@ export const InvoiceEditorPage: React.FC = () => {
       {/* 2. Main Editor Form */}
       <div className="space-y-6">
         <InvoiceForm form={form} />
-
-        {/* 3. Bottom Form Action Bar (Convenient once user is done editing) */}
-        {/* <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="text-xs text-slate-500 dark:text-slate-400">
-            Finished editing? Preview your document before sending or save it as a draft.
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-            <Button
-              type="button"
-              variant="outline"
-              size="md"
-              onClick={() => setShowPreviewModal(true)}
-              icon={<Eye className="w-4 h-4 text-[#FF7916]" />}
-              className="flex-1 sm:flex-none rounded-xl border-orange-200 dark:border-orange-900/60 hover:bg-orange-50 dark:hover:bg-orange-950/30 font-semibold text-slate-700 dark:text-slate-200"
-            >
-              Preview Invoice
-            </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              size="md"
-              onClick={handleSubmit(handleSaveDraft)}
-              icon={<Save className="w-4 h-4 text-slate-500" />}
-              className="flex-1 sm:flex-none rounded-xl"
-            >
-              Save Draft
-            </Button>
-
-            <Button
-              type="button"
-              variant="primary"
-              size="md"
-              onClick={handleSubmit(handleSaveAndSend)}
-              icon={<Send className="w-4 h-4" />}
-              className="flex-1 sm:flex-none bg-[#FF7916] hover:bg-[#ea580c] text-white font-bold rounded-xl px-5 shadow-sm shadow-[#FF7916]/25"
-            >
-              {isEditing ? 'Update & Send' : 'Save & Issue Invoice'}
-            </Button>
-          </div>
-        </div> */}
       </div>
 
-      {/* 4. Full Document Preview Modal (Triggered by Preview Invoice button) */}
+      {/* 3. Mobile Floating Action Dock (Always within thumb reach) */}
+      <div className="fixed bottom-0 left-0 right-0 z-30 p-3.5 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 shadow-xl md:hidden print:hidden">
+        <div>
+          <span className="text-[10px] text-slate-400 block font-medium uppercase tracking-wider">
+            Total Due
+          </span>
+          <span className="font-mono font-bold text-base text-[#FF7916]">
+            {formatCurrency(liveTotals.total, liveInvoice.currency)}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setShowPreviewModal(true)}
+            icon={<Eye className="w-4 h-4 text-[#FF7916]" />}
+            className="rounded-xl border-orange-200 dark:border-orange-900/60 font-semibold"
+          >
+            Preview
+          </Button>
+
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            onClick={handleSubmit(handleSaveAndSend)}
+            icon={<Send className="w-4 h-4" />}
+            className="bg-[#FF7916] hover:bg-[#ea580c] text-white font-bold rounded-xl px-4 shadow-sm"
+          >
+            {isEditing ? 'Update' : 'Issue'}
+          </Button>
+        </div>
+      </div>
+
+      {/* 4. Full Document Preview Modal */}
       <InvoicePreviewModal
         invoice={liveInvoice}
         isOpen={showPreviewModal}
@@ -359,20 +353,6 @@ export const InvoiceEditorPage: React.FC = () => {
         onTemplateChange={handleTemplateChange}
         onSaveAndSend={handleSubmit(handleSaveAndSend)}
       />
-
-      {/* NOTE: Side-by-side preview pane commented out per user request:
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        <div className="lg:col-span-7 xl:col-span-7 space-y-6">
-          <InvoiceForm form={form} />
-        </div>
-        <div className="lg:col-span-5 xl:col-span-5 sticky top-20">
-          <InvoicePreviewPane
-            invoice={liveInvoice}
-            onTemplateChange={handleTemplateChange}
-          />
-        </div>
-      </div>
-      */}
     </div>
   );
 };

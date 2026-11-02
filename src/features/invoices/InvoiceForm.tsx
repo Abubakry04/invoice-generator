@@ -20,6 +20,8 @@ import {
   CheckCircle2,
   XCircle,
   X,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { InvoiceFormData } from './invoiceSchema';
 import { useClientStore } from '../../store/clientStore';
@@ -52,8 +54,6 @@ const ACCENT_COLORS = [
   { name: 'Royal Blue', value: '#2563eb' },
   { name: 'Emerald', value: '#059669' },
   { name: 'Indigo', value: '#4f46e5' },
-  { name: 'Teal', value: '#0d9488' },
-  { name: 'Violet', value: '#7c3aed' },
   { name: 'Amber Bronze', value: '#d97706' },
   { name: 'Rose', value: '#e11d48' },
   { name: 'Slate Dark', value: '#334155' },
@@ -186,6 +186,9 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({ form }) => {
               <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
                 Invoice Setup
               </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Numbering, timeline, and styling parameters
+              </p>
             </div>
           </div>
 
@@ -231,49 +234,50 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({ form }) => {
               required
             />
             {/* Quick date presets */}
-            {/* <div className="flex items-center gap-1 pt-0.5">
+            <div className="flex items-center gap-1 pt-0.5">
               <span className="text-[10px] text-slate-400">Preset:</span>
               <button
                 type="button"
-                onClick={() => setValue('dueDate', getTodayDateString())}
-                className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                onClick={() => setValue('dueDate', getTodayDateString(), { shouldDirty: true })}
+                className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
               >
                 Today
               </button>
               <button
                 type="button"
                 onClick={() => setDueInDays(7)}
-                className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
               >
                 +7d
               </button>
               <button
                 type="button"
                 onClick={() => setDueInDays(14)}
-                className="text-[10px] px-1.5 py-0.5 rounded bg-orange-50 dark:bg-orange-950/50 text-[#FF7916] font-semibold hover:bg-orange-100"
+                className="text-[10px] px-1.5 py-0.5 rounded bg-orange-50 dark:bg-orange-950/50 text-[#FF7916] font-semibold hover:bg-orange-100 transition-colors"
               >
                 +14d
               </button>
               <button
                 type="button"
                 onClick={() => setDueInDays(30)}
-                className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
               >
                 +30d
               </button>
-            </div> */}
+            </div>
           </div>
         </div>
 
-        {/* Template & Color Picker Bar */}
-       {/* <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
-            <div className="lg:col-span-7 space-y-2">
+        {/* Inline Design & Template Selector */}
+        <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+            {/* Template Selector Pills */}
+            <div className="md:col-span-7 space-y-1.5">
               <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-[#FF7916]" />
-                Invoice Design Template
+                Invoice Template
               </label>
-              <div className="grid grid-cols-3 gap-2.5">
+              <div className="grid grid-cols-3 gap-2">
                 {TEMPLATES.map((t) => {
                   const isSelected = selectedTemplate === t.id;
                   return (
@@ -281,129 +285,131 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({ form }) => {
                       key={t.id}
                       type="button"
                       onClick={() => setValue('template', t.id, { shouldDirty: true })}
-                      className={`p-3 rounded-2xl border text-left transition-all relative ${
+                      className={`px-3 py-2 rounded-xl border text-left flex items-center justify-between transition-all ${
                         isSelected
-                          ? 'border-[#FF7916] bg-orange-50/50 dark:bg-orange-950/20 ring-2 ring-[#FF7916]/20 shadow-xs'
-                          : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-slate-900/40'
+                          ? 'border-[#FF7916] bg-orange-50/60 dark:bg-orange-950/30 text-[#FF7916] ring-1 ring-[#FF7916]/30'
+                          : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
                       }`}
                     >
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-base">{t.icon}</span>
-                        {isSelected && (
-                          <span className="w-4 h-4 rounded-full bg-[#FF7916] text-white flex items-center justify-center text-[10px]">
-                            <Check className="w-2.5 h-2.5 stroke-[3]" />
-                          </span>
-                        )}
+                      <div className="flex items-center gap-1.5 truncate">
+                        <span className="text-sm">{t.icon}</span>
+                        <span className="text-xs font-bold truncate">{t.name}</span>
                       </div>
-                      <p className="text-xs font-bold text-slate-900 dark:text-white">{t.name}</p>
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-1">{t.desc}</p>
+                      {isSelected && <Check className="w-3.5 h-3.5 stroke-[3] shrink-0" />}
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            <div className="lg:col-span-5 space-y-2">
+            {/* Accent Color Swatches */}
+            <div className="md:col-span-5 space-y-1.5">
               <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                 <Palette className="w-3.5 h-3.5 text-[#FF7916]" />
                 Brand Accent Color
               </label>
-              <div className="flex flex-wrap items-center gap-2 p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800">
-                {ACCENT_COLORS.slice(0, 6).map((c) => {
-                  const isSelected = selectedColor.toLowerCase() === c.value.toLowerCase();
-                  return (
-                    <button
-                      key={c.value}
-                      type="button"
-                      onClick={() => setValue('accentColor', c.value, { shouldDirty: true })}
-                      className={`w-7 h-7 rounded-xl transition-all relative flex items-center justify-center ${
-                        isSelected
-                          ? 'scale-110 shadow-md ring-2 ring-offset-2 ring-slate-800 dark:ring-white ring-offset-white dark:ring-offset-slate-900'
-                          : 'hover:scale-105 opacity-85 hover:opacity-100'
-                      }`}
-                      style={{ backgroundColor: c.value }}
-                      title={c.name}
-                    >
-                      {isSelected && <Check className="w-3.5 h-3.5 text-white stroke-[3]" />}
-                    </button>
-                  );
-                })}
-                <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-1" />
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="color"
-                    value={selectedColor}
-                    onChange={(e) => setValue('accentColor', e.target.value, { shouldDirty: true })}
-                    className="w-7 h-7 rounded-xl cursor-pointer border border-slate-300 dark:border-slate-700 p-0.5 bg-transparent"
-                    title="Custom hex color"
-                  />
-                  <span className="text-[11px] font-mono font-semibold text-slate-500 uppercase">
-                    {selectedColor}
-                  </span>
+              <div className="flex items-center gap-2 p-1.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800">
+                <div className="flex items-center gap-1.5 flex-1 overflow-x-auto scrollbar-none py-0.5">
+                  {ACCENT_COLORS.map((c) => {
+                    const isSelected = selectedColor.toLowerCase() === c.value.toLowerCase();
+                    return (
+                      <button
+                        key={c.value}
+                        type="button"
+                        onClick={() => setValue('accentColor', c.value, { shouldDirty: true })}
+                        className={`w-6 h-6 rounded-lg transition-transform shrink-0 flex items-center justify-center relative ${
+                          isSelected
+                            ? 'scale-110 shadow-sm ring-2 ring-slate-900 dark:ring-white'
+                            : 'hover:scale-105 opacity-85 hover:opacity-100'
+                        }`}
+                        style={{ backgroundColor: c.value }}
+                        title={c.name}
+                      >
+                        {isSelected && <Check className="w-3 h-3 text-white stroke-[3]" />}
+                      </button>
+                    );
+                  })}
                 </div>
+                <div className="h-4 w-px bg-slate-200 dark:bg-slate-700 shrink-0" />
+                <input
+                  type="color"
+                  value={selectedColor}
+                  onChange={(e) => setValue('accentColor', e.target.value, { shouldDirty: true })}
+                  className="w-6 h-6 rounded-lg cursor-pointer border border-slate-300 dark:border-slate-700 p-0.5 bg-transparent shrink-0"
+                  title="Custom color"
+                />
               </div>
             </div>
           </div>
-        </div> */}
+        </div>
       </div>
 
       {/* 2. Parties Grid: Bill From & Bill To */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Bill From: Sender (Business Profile) */}
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between space-y-4">
-          <div>
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-[#FF7916]" />
-                From (Your Business)
-              </h3>
-              <Link
-                to="/settings"
-                className="text-[11px] font-semibold text-[#FF7916] hover:underline flex items-center gap-1"
-                title="Edit default business profile in Settings"
-              >
-                <span>Settings</span>
-                <ExternalLink className="w-3 h-3" />
-              </Link>
-            </div>
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+        {/* Bill From: Sender (Compact & Collapsible) */}
+        <div className="md:col-span-5 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-[#FF7916]" />
+              From (Your Business)
+            </h3>
+            <Link
+              to="/settings"
+              className="text-[11px] font-semibold text-[#FF7916] hover:underline flex items-center gap-1"
+              title="Edit default business profile in Settings"
+            >
+              <span>Settings</span>
+              <ExternalLink className="w-3 h-3" />
+            </Link>
+          </div>
 
-            <div className="mt-3 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 flex items-start gap-3">
-              {business.logo ? (
-                <img
-                  src={business.logo}
-                  alt={business.name}
-                  className="w-12 h-12 rounded-xl object-contain bg-white p-1 border border-slate-200 dark:border-slate-700 shrink-0"
-                />
-              ) : (
-                <div className="w-12 h-12 rounded-xl bg-orange-100 dark:bg-orange-950/80 text-[#FF7916] font-bold text-lg flex items-center justify-center shrink-0">
-                  {business.name?.charAt(0) || 'E'}
-                </div>
-              )}
-              <div className="min-w-0 flex-1">
-                <h4 className="font-bold text-slate-900 dark:text-white text-sm truncate">
-                  {business.name || 'EgolePay LTD'}
-                </h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">
-                  {business.email || 'billing@domain.com'}
-                </p>
-                <p className="text-[11px] text-slate-400 dark:text-slate-500 line-clamp-1 mt-0.5">
-                  {business.address || 'Lagos, Nigeria'}
-                </p>
+          <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 flex items-start gap-3">
+            {business.logo ? (
+              <img
+                src={business.logo}
+                alt={business.name}
+                className="w-11 h-11 rounded-xl object-contain bg-white p-1 border border-slate-200 dark:border-slate-700 shrink-0"
+              />
+            ) : (
+              <div className="w-11 h-11 rounded-xl bg-orange-100 dark:bg-orange-950/80 text-[#FF7916] font-bold text-base flex items-center justify-center shrink-0">
+                {business.name?.charAt(0) || 'E'}
               </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <h4 className="font-bold text-slate-900 dark:text-white text-sm truncate">
+                {business.name || 'EgolePay LTD'}
+              </h4>
+              <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                {business.email || 'billing@domain.com'}
+              </p>
+              <p className="text-[11px] text-slate-400 dark:text-slate-500 line-clamp-1 mt-0.5">
+                {business.address || 'Lagos, Nigeria'}
+              </p>
             </div>
           </div>
 
+          {/* Collapsible invoice-specific overrides */}
           <div>
             <button
               type="button"
               onClick={() => setShowBusinessDetails(!showBusinessDetails)}
-              className="text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 font-medium underline"
+              className="text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 font-medium flex items-center gap-1.5 transition-colors"
             >
-              {showBusinessDetails ? 'Hide invoice-specific business overrides' : 'Edit sender details for this invoice'}
+              {showBusinessDetails ? (
+                <>
+                  <ChevronUp className="w-3.5 h-3.5" />
+                  <span>Hide sender overrides</span>
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="w-3.5 h-3.5" />
+                  <span>Edit sender for this invoice only</span>
+                </>
+              )}
             </button>
 
             {showBusinessDetails && (
-              <div className="mt-3 space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <div className="mt-3 space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800 animate-in fade-in duration-150">
                 <Input
                   label="Company Name"
                   {...register('business.name')}
@@ -413,7 +419,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({ form }) => {
                   label="Business Email"
                   type="email"
                   {...register('business.email')}
-                  placeholder="billing@pulsetech.ng"
+                  placeholder="billing@domain.com"
                 />
                 <Input
                   label="Business Phone"
@@ -424,7 +430,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({ form }) => {
                   label="Business Address"
                   {...register('business.address')}
                   rows={2}
-                  placeholder="14 Adeola Odeku St, Victoria Island, Lagos"
+                  placeholder="Company Address"
                 />
               </div>
             )}
@@ -432,7 +438,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({ form }) => {
         </div>
 
         {/* Bill To: Customer (Client Details) */}
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+        <div className="md:col-span-7 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2">
               <Users className="w-4 h-4 text-[#FF7916]" />
