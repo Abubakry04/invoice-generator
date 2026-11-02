@@ -16,6 +16,7 @@ import { InvoicePDFDownloadButton } from './InvoicePDFDownloadButton';
 import { useInvoiceStore } from '../../store/invoiceStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useClientStore } from '../../store/clientStore';
+import { useProductStore } from '../../store/productStore';
 import { useToast } from '../../components/ui/Toast';
 import { Button } from '../../components/ui/Button';
 import { StatusBadge } from '../../components/ui/StatusBadge';
@@ -34,6 +35,7 @@ export const InvoiceEditorPage: React.FC = () => {
   const { invoices, addInvoice, updateInvoice, getInvoice } = useInvoiceStore();
   const { settings } = useSettingsStore();
   const { clients } = useClientStore();
+  const { products, deductStockForInvoice } = useProductStore();
 
   const isEditing = Boolean(id);
   const existingInvoice = isEditing && id ? getInvoice(id) : undefined;
@@ -85,6 +87,12 @@ export const InvoiceEditorPage: React.FC = () => {
       ? clients.find((c) => c.name.toLowerCase() === clientParam.toLowerCase())
       : undefined;
 
+    // Prepopulate product if query param prefillProductId is set
+    const productParam = searchParams.get('prefillProductId');
+    const matchedProduct = productParam
+      ? products.find((p) => p.id === productParam)
+      : undefined;
+
     return {
       number: nextNumber,
       issueDate: getTodayDateString(),
@@ -107,31 +115,45 @@ export const InvoiceEditorPage: React.FC = () => {
         address: matchedClient ? matchedClient.address : '',
         phone: matchedClient?.phone || '',
       },
-      items: [
-        {
-          id: `item-${Date.now()}-1`,
-          description: '',
-          quantity: 1,
-          unitPrice: 0,
-        },
-      ],
+      items: matchedProduct
+        ? [
+            {
+              id: `item-${Date.now()}-1`,
+              productId: matchedProduct.id,
+              description:
+                matchedProduct.name +
+                (matchedProduct.description ? ` - ${matchedProduct.description}` : ''),
+              quantity: 1,
+              unitPrice: matchedProduct.unitPrice,
+            },
+          ]
+        : [
+            {
+              id: `item-${Date.now()}-1`,
+              description: '',
+              quantity: 1,
+              unitPrice: 0,
+            },
+          ],
       discount: 0,
       taxRate: settings.defaultTaxRate || 7.5,
       notes: 'Payment is due within 14 days of issue. Kindly quote invoice number in bank transfer remarks.',
     };
-  }, [existingInvoice, invoices, settings, searchParams, clients]);
+  }, [existingInvoice, invoices, settings, searchParams, clients, products]);
 
   const form = useForm<InvoiceFormData>({
     resolver: zodResolver(invoiceFormSchema) as any,
     defaultValues,
-    mode: 'onChange',
+    mode: 'onTouched',
   });
 
   const { handleSubmit, watch, reset, setValue } = form;
 
   useEffect(() => {
-    reset(defaultValues);
-  }, [defaultValues, reset]);
+    if (existingInvoice) {
+      reset(defaultValues);
+    }
+  }, [existingInvoice?.id]);
 
   // Watch current live values to stream to preview and PDF
   const formValues = watch();
@@ -171,10 +193,19 @@ export const InvoiceEditorPage: React.FC = () => {
   const liveTotals = calculateTotals(liveInvoice.items, liveInvoice.discount, liveInvoice.taxRate);
 
   const onSave = (data: InvoiceFormData, targetStatus?: InvoiceStatus) => {
+    const finalStatus = targetStatus || data.status;
     const finalData = {
       ...data,
-      status: targetStatus || data.status,
+      status: finalStatus,
     };
+
+    // If invoice is being sent or marked paid, deduct stock for physical products
+    if (finalStatus === 'sent' || finalStatus === 'paid') {
+      const deducted = deductStockForInvoice(data.items);
+      if (deducted > 0) {
+        toast.info(`Updated stock: ${deducted} product unit(s) deducted from catalog`);
+      }
+    }
 
     if (isEditing && id) {
       updateInvoice(id, finalData);
@@ -278,7 +309,7 @@ export const InvoiceEditorPage: React.FC = () => {
         <InvoiceForm form={form} />
 
         {/* 3. Bottom Form Action Bar (Convenient once user is done editing) */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+        {/* <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="text-xs text-slate-500 dark:text-slate-400">
             Finished editing? Preview your document before sending or save it as a draft.
           </div>
@@ -317,7 +348,7 @@ export const InvoiceEditorPage: React.FC = () => {
               {isEditing ? 'Update & Send' : 'Save & Issue Invoice'}
             </Button>
           </div>
-        </div>
+        </div> */}
       </div>
 
       {/* 4. Full Document Preview Modal (Triggered by Preview Invoice button) */}

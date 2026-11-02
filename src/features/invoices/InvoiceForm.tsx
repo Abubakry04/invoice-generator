@@ -15,10 +15,18 @@ import {
   FileText,
   Clock,
   ExternalLink,
+  Package,
+  AlertTriangle,
+  CheckCircle2,
+  XCircle,
+  X,
 } from 'lucide-react';
 import { InvoiceFormData } from './invoiceSchema';
 import { useClientStore } from '../../store/clientStore';
 import { useSettingsStore } from '../../store/settingsStore';
+import { useProductStore } from '../../store/productStore';
+import { CatalogPickerModal } from '../inventory/CatalogPickerModal';
+import { ProductItem } from '../../types';
 import { Input } from '../../components/ui/Input';
 import { Textarea } from '../../components/ui/Textarea';
 import { Select } from '../../components/ui/Select';
@@ -60,8 +68,10 @@ const QUICK_TERMS = [
 export const InvoiceForm: React.FC<InvoiceFormProps> = ({ form }) => {
   const { clients } = useClientStore();
   const { settings } = useSettingsStore();
+  const { products } = useProductStore();
 
   const [showBusinessDetails, setShowBusinessDetails] = useState(false);
+  const [catalogPickerRow, setCatalogPickerRow] = useState<number | null>(null);
 
   const {
     register,
@@ -106,6 +116,54 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({ form }) => {
     }
   };
 
+  const handleSelectCatalogItem = (product: ProductItem) => {
+    const itemDesc = product.name + (product.description ? ` - ${product.description}` : '');
+    if (catalogPickerRow === null) return;
+
+    if (catalogPickerRow === -1) {
+      // Append new line item from catalog
+      append({
+        id: `item-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        productId: product.id,
+        description: itemDesc,
+        quantity: 1,
+        unitPrice: product.unitPrice,
+      });
+    } else {
+      // Fill current row from catalog
+      setValue(`items.${catalogPickerRow}.productId`, product.id, { shouldDirty: true });
+      setValue(`items.${catalogPickerRow}.description`, itemDesc, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+      setValue(`items.${catalogPickerRow}.unitPrice`, product.unitPrice, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    }
+    setCatalogPickerRow(null);
+  };
+
+  const handleSelectCustomItem = (customName: string) => {
+    if (catalogPickerRow === null) return;
+
+    if (catalogPickerRow === -1) {
+      append({
+        id: `item-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        description: customName || '',
+        quantity: 1,
+        unitPrice: 0,
+      });
+    } else {
+      setValue(`items.${catalogPickerRow}.productId`, undefined, { shouldDirty: true });
+      setValue(`items.${catalogPickerRow}.description`, customName || '', {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    }
+    setCatalogPickerRow(null);
+  };
+
   const handleAddLineItem = () => {
     append({
       id: `item-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -128,9 +186,6 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({ form }) => {
               <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
                 Invoice Setup
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Numbering, scheduling dates, and visual layout theme
-              </p>
             </div>
           </div>
 
@@ -176,7 +231,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({ form }) => {
               required
             />
             {/* Quick date presets */}
-            <div className="flex items-center gap-1 pt-0.5">
+            {/* <div className="flex items-center gap-1 pt-0.5">
               <span className="text-[10px] text-slate-400">Preset:</span>
               <button
                 type="button"
@@ -206,14 +261,13 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({ form }) => {
               >
                 +30d
               </button>
-            </div>
+            </div> */}
           </div>
         </div>
 
         {/* Template & Color Picker Bar */}
-        <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-4">
+       {/* <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
-            {/* Template Selection */}
             <div className="lg:col-span-7 space-y-2">
               <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-[#FF7916]" />
@@ -249,7 +303,6 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({ form }) => {
               </div>
             </div>
 
-            {/* Accent Color Selection */}
             <div className="lg:col-span-5 space-y-2">
               <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                 <Palette className="w-3.5 h-3.5 text-[#FF7916]" />
@@ -291,7 +344,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({ form }) => {
               </div>
             </div>
           </div>
-        </div>
+        </div> */}
       </div>
 
       {/* 2. Parties Grid: Bill From & Bill To */}
@@ -461,16 +514,29 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({ form }) => {
             )}
           </div>
 
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleAddLineItem}
-            className="border-[#FF7916]/30 text-[#FF7916] hover:bg-orange-50 dark:hover:bg-orange-950/30"
-            icon={<Plus className="w-4 h-4 text-[#FF7916]" />}
-          >
-            Add Line Item
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setCatalogPickerRow(-1)}
+              className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+              icon={<Package className="w-4 h-4 text-[#FF7916]" />}
+            >
+              Select from Catalog
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleAddLineItem}
+              className="border-[#FF7916]/30 text-[#FF7916] hover:bg-orange-50 dark:hover:bg-orange-950/30 font-semibold"
+              icon={<Plus className="w-4 h-4 text-[#FF7916]" />}
+            >
+              Add Custom Item
+            </Button>
+          </div>
         </div>
 
         {/* Desktop Table Header */}
@@ -488,68 +554,26 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({ form }) => {
             const itemQty = items[index]?.quantity || 0;
             const itemPrice = items[index]?.unitPrice || 0;
             const itemTotal = (Number(itemQty) || 0) * (Number(itemPrice) || 0);
+            const productId = items[index]?.productId;
+            const matchedProduct = productId
+              ? products.find((p) => p.id === productId)
+              : undefined;
+            const isProduct = matchedProduct?.type === 'product';
+            const stock = matchedProduct?.stock ?? 0;
+            const threshold = matchedProduct?.lowStockThreshold ?? 5;
+            const isOverStock = isProduct && (Number(itemQty) || 0) > stock;
+            const isOutOfStock = isProduct && stock === 0;
+            const isLowStock = isProduct && stock > 0 && stock <= threshold;
 
             return (
               <div
                 key={field.id}
                 className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 hover:border-slate-300 dark:hover:border-slate-700 transition-all space-y-3 group"
               >
-                {/* Desktop Row View */}
-                <div className="hidden md:grid grid-cols-12 gap-3 items-center">
-                  <div className="col-span-1 text-center font-mono text-xs font-bold text-slate-400">
-                    {index + 1}
-                  </div>
-
-                  <div className="col-span-5">
-                    <Input
-                      placeholder="e.g. Website Redesign & React Component System"
-                      {...register(`items.${index}.description` as const)}
-                      error={errors.items?.[index]?.description?.message}
-                      className="bg-white dark:bg-slate-900"
-                    />
-                  </div>
-
-                  <div className="col-span-2">
-                    <Input
-                      type="number"
-                      min="1"
-                      step="1"
-                      {...register(`items.${index}.quantity` as const)}
-                      error={errors.items?.[index]?.quantity?.message}
-                      className="text-right font-mono bg-white dark:bg-slate-900"
-                    />
-                  </div>
-
-                  <div className="col-span-2">
-                    <Input
-                      type="number"
-                      min="0"
-                      step="any"
-                      {...register(`items.${index}.unitPrice` as const)}
-                      error={errors.items?.[index]?.unitPrice?.message}
-                      className="text-right font-mono bg-white dark:bg-slate-900"
-                    />
-                  </div>
-
-                  <div className="col-span-2 flex items-center justify-end gap-2">
-                    <span className="font-mono font-bold text-slate-900 dark:text-white text-xs truncate">
-                      {formatCurrency(itemTotal, currency)}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => remove(index)}
-                      disabled={fields.length === 1}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 disabled:opacity-20 disabled:cursor-not-allowed transition-colors shrink-0"
-                      title="Remove item"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Mobile Card View */}
-                <div className="md:hidden space-y-3">
-                  <div className="flex items-center justify-between">
+                {/* Unified Responsive Row View */}
+                <div className="space-y-3">
+                  {/* Mobile header (index + delete button) */}
+                  <div className="flex md:hidden items-center justify-between pb-1 border-b border-slate-100 dark:border-slate-800">
                     <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                       Item #{index + 1}
                     </span>
@@ -563,35 +587,130 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({ form }) => {
                     </button>
                   </div>
 
-                  <Input
-                    label="Description"
-                    placeholder="Item description..."
-                    {...register(`items.${index}.description` as const)}
-                    error={errors.items?.[index]?.description?.message}
-                  />
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
+                    {/* Index (Desktop only) */}
+                    <div className="hidden md:flex col-span-1 justify-center pt-2.5 font-mono text-xs font-bold text-slate-400">
+                      {index + 1}
+                    </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <Input
-                      label="Quantity"
-                      type="number"
-                      min="1"
-                      step="1"
-                      {...register(`items.${index}.quantity` as const)}
-                    />
-                    <Input
-                      label={`Unit Price (${currencySymbol})`}
-                      type="number"
-                      min="0"
-                      step="any"
-                      {...register(`items.${index}.unitPrice` as const)}
-                    />
-                  </div>
+                    {/* Description */}
+                    <div className="col-span-1 md:col-span-5 space-y-1">
+                      <label className="block md:hidden text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        Description
+                      </label>
+                      <div className="flex items-center gap-1.5">
+                        <div className="flex-1">
+                          <Input
+                            placeholder="Enter product or service name..."
+                            {...register(`items.${index}.description` as const)}
+                            error={errors.items?.[index]?.description?.message}
+                            className="bg-white dark:bg-slate-900"
+                          />
+                        </div>
+                        {matchedProduct ? (
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => setCatalogPickerRow(index)}
+                              title="Linked to catalog (Click to change)"
+                              className="p-2 rounded-xl border border-orange-300 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/40 text-[#FF7916] transition-colors"
+                            >
+                              <Package className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setValue(`items.${index}.productId`, undefined, { shouldDirty: true });
+                              }}
+                              title="Unlink from catalog (convert to custom item)"
+                              className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setCatalogPickerRow(index)}
+                            title="Select from catalog (Optional)"
+                            className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-[#FF7916] text-slate-400 hover:text-[#FF7916] bg-white dark:bg-slate-900 transition-colors shrink-0"
+                          >
+                            <Package className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
 
-                  <div className="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-slate-700">
-                    <span className="text-xs text-slate-500 font-semibold">Line Amount:</span>
-                    <span className="text-sm font-mono font-bold text-slate-900 dark:text-white">
-                      {formatCurrency(itemTotal, currency)}
-                    </span>
+                      {/* Stock Counter Badge */}
+                      {isProduct && (
+                        <div className="flex items-center gap-2 pl-0.5 pt-0.5">
+                          {isOutOfStock ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-600 bg-rose-50 dark:bg-rose-950/50 px-2 py-0.5 rounded-md">
+                              <XCircle className="w-3 h-3" /> Out of stock (0 on hand)
+                            </span>
+                          ) : isLowStock ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800">
+                              <AlertTriangle className="w-3 h-3" /> Low stock: {stock} on hand
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-600 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-md">
+                              <CheckCircle2 className="w-3 h-3" /> In stock: {stock} on hand
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Quantity */}
+                    <div className="col-span-1 md:col-span-2">
+                      <label className="block md:hidden text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                        Quantity
+                      </label>
+                      <Input
+                        type="number"
+                        min="1"
+                        step="1"
+                        {...register(`items.${index}.quantity` as const)}
+                        error={errors.items?.[index]?.quantity?.message}
+                        className="text-right font-mono bg-white dark:bg-slate-900"
+                      />
+                      {isOverStock && (
+                        <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 block text-right mt-1">
+                          ⚠️ Exceeds stock ({stock})
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Unit Price */}
+                    <div className="col-span-1 md:col-span-2">
+                      <label className="block md:hidden text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                        Unit Price ({currencySymbol})
+                      </label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="any"
+                        {...register(`items.${index}.unitPrice` as const)}
+                        error={errors.items?.[index]?.unitPrice?.message}
+                        className="text-right font-mono bg-white dark:bg-slate-900"
+                      />
+                    </div>
+
+                    {/* Total & Action */}
+                    <div className="col-span-1 md:col-span-2 flex items-center justify-between md:justify-end gap-2 pt-2 md:pt-2 border-t md:border-t-0 border-slate-100 dark:border-slate-800">
+                      <span className="md:hidden text-xs text-slate-500 font-semibold">Line Total:</span>
+                      <span className="font-mono font-bold text-slate-900 dark:text-white text-xs md:text-sm truncate">
+                        {formatCurrency(itemTotal, currency)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => remove(index)}
+                        disabled={fields.length === 1}
+                        className="hidden md:flex p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 disabled:opacity-20 disabled:cursor-not-allowed transition-colors shrink-0"
+                        title="Remove item"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -739,6 +858,14 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({ form }) => {
           </div>
         </div>
       </div>
+
+      {/* Catalog Picker Modal */}
+      <CatalogPickerModal
+        isOpen={catalogPickerRow !== null}
+        onClose={() => setCatalogPickerRow(null)}
+        onSelect={handleSelectCatalogItem}
+        onSelectCustom={handleSelectCustomItem}
+      />
     </div>
   );
 };

@@ -9,9 +9,11 @@ import {
   ArrowRight,
   FileText,
   Users,
+  Package,
 } from 'lucide-react';
 import { useInvoiceStore } from '../../store/invoiceStore';
 import { useClientStore } from '../../store/clientStore';
+import { useProductStore } from '../../store/productStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { calculateTotals } from '../../lib/calculateTotals';
 import { formatCurrency } from '../../lib/formatCurrency';
@@ -23,6 +25,7 @@ export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const { invoices } = useInvoiceStore();
   const { clients } = useClientStore();
+  const { products } = useProductStore();
   const { settings } = useSettingsStore();
 
   const currency = settings.defaultCurrency || 'NGN';
@@ -94,8 +97,8 @@ export const DashboardPage: React.FC = () => {
           <Button
             onClick={() => navigate('/invoices/new')}
             size="lg"
-            className="bg-white hover:bg-black/80 text-black font-bold border-none shadow-md"
-            icon={<Plus className="w-4 h-4 text-black" />}
+            className="bg-white hover:bg-slate-100 !text-slate-900 font-bold border-none shadow-md transition-colors"
+            icon={<Plus className="w-4 h-4 text-slate-900" />}
           >
             New Invoice
           </Button>
@@ -275,6 +278,67 @@ export const DashboardPage: React.FC = () => {
               onClick={() => navigate('/clients')}
             >
               Manage Clients
+            </Button>
+          </div>
+
+          {/* Stock & Catalog Overview Card */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <Package className="w-4 h-4 text-[#FF7916]" />
+                <h3 className="font-bold text-sm text-slate-900 dark:text-white">Inventory & Stock</h3>
+              </div>
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                {products.length}
+              </span>
+            </div>
+
+            <div className="space-y-2.5">
+              {products
+                .filter((p) => p.type === 'product')
+                .slice(0, 3)
+                .map((product) => {
+                  const stock = product.stock ?? 0;
+                  const isLow = stock <= (product.lowStockThreshold ?? 5);
+
+                  return (
+                    <div
+                      key={product.id}
+                      onClick={() => navigate('/inventory')}
+                      className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition-colors"
+                    >
+                      <div className="min-w-0 pr-2">
+                        <p className="text-xs font-medium text-slate-800 dark:text-slate-200 truncate">
+                          {product.name}
+                        </p>
+                        <p className="text-[10px] text-slate-400 font-mono">
+                          {formatCurrency(product.unitPrice, currency)}
+                        </p>
+                      </div>
+
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
+                          stock === 0
+                            ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/80 dark:text-rose-400'
+                            : isLow
+                            ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/80 dark:text-amber-400'
+                            : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-400'
+                        }`}
+                      >
+                        {stock} in stock
+                      </span>
+                    </div>
+                  );
+                })}
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full text-xs"
+              onClick={() => navigate('/inventory')}
+            >
+              Manage Inventory
             </Button>
           </div>
 

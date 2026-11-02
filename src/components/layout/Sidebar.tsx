@@ -4,11 +4,13 @@ import {
   LayoutDashboard,
   FileText,
   Users,
+  Package,
   Settings as SettingsIcon,
   PlusCircle,
   X,
 } from 'lucide-react';
 import logoImg from '../../assets/logo3.png';
+import { useProductStore } from '../../store/productStore';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -16,9 +18,20 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
+  const { products } = useProductStore();
+  const lowStockCount = products.filter(
+    (p) => p.type === 'product' && (p.stock ?? 0) <= (p.lowStockThreshold ?? 5)
+  ).length;
+
   const navItems = [
     { name: 'Dashboard', to: '/', icon: LayoutDashboard },
     { name: 'Invoices', to: '/invoices', icon: FileText },
+    {
+      name: 'Inventory & Items',
+      to: '/inventory',
+      icon: Package,
+      badge: lowStockCount > 0 ? lowStockCount : undefined,
+    },
     { name: 'Clients', to: '/clients', icon: Users },
     { name: 'Settings', to: '/settings', icon: SettingsIcon },
   ];
@@ -83,15 +96,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                 end={item.to === '/'}
                 onClick={onClose}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                  `flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
                     isActive
                       ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 font-semibold'
                       : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100'
                   }`
                 }
               >
-                <Icon className="w-4 h-4 shrink-0" />
-                <span>{item.name}</span>
+                <div className="flex items-center gap-3">
+                  <Icon className="w-4 h-4 shrink-0" />
+                  <span>{item.name}</span>
+                </div>
+                {item.badge !== undefined && (
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-900/60">
+                    {item.badge}
+                  </span>
+                )}
               </NavLink>
             );
           })}

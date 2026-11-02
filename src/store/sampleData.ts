@@ -1,4 +1,4 @@
-import { Client, Invoice, Settings } from '../types';
+import { Client, Invoice, ProductItem, Settings } from '../types';
 import logoImg from '../assets/logo3.png';
 
 export const SAMPLE_LOGO_DATA_URI = logoImg;
@@ -43,6 +43,60 @@ export const SAMPLE_CLIENTS: Client[] = [
     address: '8 Admiralty Way, Lekki Phase 1, Lagos',
     phone: '+234 818 999 0011',
     createdAt: '2026-09-15T15:30:00Z',
+  },
+];
+
+export const SAMPLE_PRODUCTS: ProductItem[] = [
+  {
+    id: 'prod-001',
+    name: 'Smart POS Terminal V2 (Android 4G)',
+    description: 'All-in-one wireless payment terminal with built-in thermal printer.',
+    unitPrice: 85000,
+    type: 'product',
+    stock: 18,
+    lowStockThreshold: 5,
+    sku: 'POS-V2-4G',
+    createdAt: '2026-09-01T10:00:00Z',
+  },
+  {
+    id: 'prod-002',
+    name: 'Thermal Paper Rolls (50-Roll Carton)',
+    description: 'High-density 57mm x 40mm thermal paper rolls for POS receipts.',
+    unitPrice: 24000,
+    type: 'product',
+    stock: 42,
+    lowStockThreshold: 10,
+    sku: 'THM-57-CTN',
+    createdAt: '2026-09-02T11:00:00Z',
+  },
+  {
+    id: 'prod-003',
+    name: 'NFC Contactless Card Reader',
+    description: 'Compact Bluetooth NFC tap-to-pay reader for mobile phones and tablets.',
+    unitPrice: 38000,
+    type: 'product',
+    stock: 3, // Low stock indicator!
+    lowStockThreshold: 5,
+    sku: 'NFC-BT-03',
+    createdAt: '2026-09-05T14:30:00Z',
+  },
+  {
+    id: 'prod-004',
+    name: 'Software Integration & API Setup',
+    description: 'Payment gateway webhook integration, developer test credentials, and go-live deployment.',
+    unitPrice: 150000,
+    type: 'service',
+    sku: 'SRV-API-01',
+    createdAt: '2026-09-08T09:00:00Z',
+  },
+  {
+    id: 'prod-005',
+    name: 'Monthly Maintenance & Technical Support',
+    description: '24/7 technical hotline, firmware updates, and scheduled terminal servicing.',
+    unitPrice: 50000,
+    type: 'service',
+    sku: 'SRV-MNT-02',
+    createdAt: '2026-09-10T16:00:00Z',
   },
 ];
 

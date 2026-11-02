@@ -2,8 +2,23 @@ export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue';
 
 export type InvoiceTemplate = 'classic' | 'modern' | 'minimal';
 
+export type ItemType = 'product' | 'service';
+
+export interface ProductItem {
+  id: string;
+  name: string;
+  description?: string;
+  unitPrice: number;
+  type: ItemType;
+  stock?: number; // On-hand count, applicable for 'product'
+  lowStockThreshold?: number; // e.g. 5
+  sku?: string;
+  createdAt: string;
+}
+
 export interface LineItem {
   id: string;
+  productId?: string;
   description: string;
   quantity: number;
   unitPrice: number;
