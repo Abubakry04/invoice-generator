@@ -8,6 +8,10 @@ import {
   Eye,
   Send,
   ChevronRight,
+  Link as LinkIcon,
+  Lock,
+  AlertCircle,
+  Zap,
 } from 'lucide-react';
 import { invoiceFormSchema, InvoiceFormData } from './invoiceSchema';
 import { InvoiceForm } from './InvoiceForm';
@@ -17,6 +21,8 @@ import { useInvoiceStore } from '../../store/invoiceStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useClientStore } from '../../store/clientStore';
 import { useProductStore } from '../../store/productStore';
+import { useSubscriptionStore } from '../../store/subscriptionStore';
+import { useUiStore } from '../../store/uiStore';
 import { useToast } from '../../components/ui/Toast';
 import { Button } from '../../components/ui/Button';
 import { StatusBadge } from '../../components/ui/StatusBadge';
@@ -36,6 +42,16 @@ export const InvoiceEditorPage: React.FC = () => {
   const { settings } = useSettingsStore();
   const { clients } = useClientStore();
   const { products, deductStockForInvoice } = useProductStore();
+  const {
+    canCreateInvoice,
+    getCurrentPlan,
+    hasFeature,
+    isTemplateAllowed,
+    getRequiredPlanForTemplate,
+  } = useSubscriptionStore();
+  const { openModal } = useUiStore();
+
+  const canUsePaymentPortal = hasFeature('payment_portal');
 
   const isEditing = Boolean(id);
   const existingInvoice = isEditing && id ? getInvoice(id) : undefined;
@@ -45,6 +61,12 @@ export const InvoiceEditorPage: React.FC = () => {
 
   // Compute initial default values
   const defaultValues = useMemo<InvoiceFormData>(() => {
+    // Resolve safe template according to subscription plan allowance
+    const resolveAllowedTemplate = (preferred?: string): InvoiceTemplate => {
+      const candidate = (preferred as InvoiceTemplate) || 'minimal';
+      return isTemplateAllowed(candidate) ? candidate : 'minimal';
+    };
+
     if (existingInvoice) {
       return {
         number: existingInvoice.number,
@@ -52,7 +74,7 @@ export const InvoiceEditorPage: React.FC = () => {
         dueDate: existingInvoice.dueDate,
         currency: existingInvoice.currency,
         status: existingInvoice.status,
-        template: existingInvoice.template || settings.defaultTemplate || 'modern',
+        template: existingInvoice.template || resolveAllowedTemplate(settings.defaultTemplate),
         accentColor: existingInvoice.accentColor || settings.accentColor || '#FF7916',
         business: {
           name: existingInvoice.business.name || settings.business.name,
@@ -99,7 +121,7 @@ export const InvoiceEditorPage: React.FC = () => {
       dueDate: getDefaultDueDate(14),
       currency: settings.defaultCurrency || 'NGN',
       status: 'draft',
-      template: settings.defaultTemplate || 'modern',
+      template: resolveAllowedTemplate(settings.defaultTemplate),
       accentColor: settings.accentColor || '#FF7916',
       business: {
         name: settings.business.name,
@@ -207,6 +229,15 @@ export const InvoiceEditorPage: React.FC = () => {
       }
     }
 
+    // SaaS Quota Gate: check limits for free tier
+    if (!isEditing && !canCreateInvoice()) {
+      const plan = getCurrentPlan();
+      openModal('upgrade', {
+        trigger: `Monthly allowance reached (${plan.invoiceLimit} invoices/mo). Upgrade to create more invoices.`,
+      });
+      return;
+    }
+
     if (isEditing && id) {
       updateInvoice(id, finalData);
       toast.success(`Invoice ${finalData.number} updated successfully`);
@@ -222,55 +253,87 @@ export const InvoiceEditorPage: React.FC = () => {
 
   // Handle template change from preview modal
   const handleTemplateChange = (newTemplate: InvoiceTemplate) => {
+    if (!isTemplateAllowed(newTemplate)) {
+      const requiredPlan = getRequiredPlanForTemplate(newTemplate);
+      openModal('upgrade', {
+        targetPlan: requiredPlan,
+        trigger: `The "${newTemplate}" template requires the ${
+          requiredPlan === 'starter' ? 'Starter' : 'Business'
+        } plan. Upgrade now to unlock it.`,
+      });
+      return;
+    }
     setValue('template', newTemplate, { shouldDirty: true, shouldValidate: true });
   };
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-28 sm:pb-16">
       {/* 1. Sticky Action & Navigation Bar */}
-      <div className="sticky top-16 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3.5 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs print:hidden">
-        {/* Left: Breadcrumbs, Title & Live Total */}
-        <div className="flex flex-wrap items-center gap-3">
+      <div className="sticky top-16 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4 shadow-xs print:hidden">
+        {/* Left: Breadcrumbs & Title */}
+        <div className="flex items-center gap-2.5 min-w-0">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => navigate('/invoices')}
-            className="hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300"
+            className="hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:text-slate-400 px-2"
             icon={<ArrowLeft className="w-4 h-4" />}
           >
-            Invoices
+            <span className="hidden sm:inline">Invoices</span>
           </Button>
 
-          <ChevronRight className="w-4 h-4 text-slate-300 dark:text-slate-600 shrink-0" />
+          <ChevronRight className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600 shrink-0 hidden sm:block" />
 
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-              <span>{isEditing ? `Edit ${existingInvoice?.number}` : 'New Invoice'}</span>
+          <div className="flex items-center gap-2 truncate">
+            <h1 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white tracking-tight truncate">
+              {isEditing ? existingInvoice?.number || 'Edit Invoice' : 'New Invoice'}
             </h1>
             <StatusBadge status={liveInvoice.status} size="sm" />
-          </div>
-
-          {/* Real-time total pill */}
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-xl bg-orange-50 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-900/60 text-xs">
-            <span className="text-slate-500 dark:text-slate-400">Total:</span>
-            <span className="font-mono font-bold text-[#FF7916]">
-              {formatCurrency(liveTotals.total, liveInvoice.currency)}
-            </span>
-            <span className="text-slate-400">•</span>
-            <span className="text-slate-500 font-medium">{liveInvoice.items.length} items</span>
           </div>
         </div>
 
         {/* Right: Actions */}
-        <div className="hidden md:flex items-center gap-2.5">
+        <div className="hidden md:flex items-center gap-2">
+          {/* Public Hosted Pay Link */}
+          {isEditing && id && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (!canUsePaymentPortal) {
+                  openModal('upgrade', {
+                    targetPlan: 'starter',
+                    trigger: 'Client online payment links are available on Starter and Business plans.',
+                  });
+                  return;
+                }
+                const payUrl = `${window.location.origin}/pay/${id}`;
+                navigator.clipboard.writeText(payUrl);
+                toast.success('Client payment link copied to clipboard!');
+              }}
+              icon={
+                canUsePaymentPortal ? (
+                  <LinkIcon className="w-3.5 h-3.5 text-blue-500" />
+                ) : (
+                  <Lock className="w-3.5 h-3.5 text-amber-500" />
+                )
+              }
+              className="text-xs"
+              title="Copy hosted client invoice payment portal link"
+            >
+              Pay Link
+            </Button>
+          )}
+
           {/* Preview Button */}
           <Button
             type="button"
             variant="outline"
             size="sm"
             onClick={() => setShowPreviewModal(true)}
-            icon={<Eye className="w-4 h-4 text-[#FF7916]" />}
-            className="rounded-xl border-orange-200 dark:border-orange-900/60 hover:bg-orange-50 dark:hover:bg-orange-950/30 font-semibold text-slate-700 dark:text-slate-200"
+            icon={<Eye className="w-3.5 h-3.5 text-slate-500" />}
+            className="text-xs"
           >
             Preview
           </Button>
@@ -279,30 +342,60 @@ export const InvoiceEditorPage: React.FC = () => {
             variant="outline"
             size="sm"
             onClick={handleSubmit(handleSaveDraft)}
-            icon={<Save className="w-4 h-4 text-slate-500" />}
-            className="rounded-xl"
+            icon={<Save className="w-3.5 h-3.5 text-slate-500" />}
+            className="text-xs"
           >
-            Save Draft
+            Draft
           </Button>
 
           <InvoicePDFDownloadButton
             invoice={liveInvoice}
             size="sm"
             variant="secondary"
-            className="rounded-xl"
+            className="text-xs"
           />
 
           <Button
             variant="primary"
             size="sm"
             onClick={handleSubmit(handleSaveAndSend)}
-            icon={<Send className="w-4 h-4" />}
-            className="bg-[#FF7916] hover:bg-[#ea580c] active:bg-[#c2410c] text-white shadow-sm shadow-[#FF7916]/25 rounded-xl font-bold px-4"
+            icon={<Send className="w-3.5 h-3.5" />}
+            className="bg-[#FF7916] hover:bg-[#ea580c] active:bg-[#c2410c] text-white shadow-xs rounded-xl font-bold px-3.5 text-xs"
           >
-            {isEditing ? 'Update & Send' : 'Save & Issue Invoice'}
+            {isEditing ? 'Update Invoice' : 'Save & Issue'}
           </Button>
         </div>
       </div>
+
+      {/* SaaS Plan Quota Warning Banner */}
+      {!isEditing && !canCreateInvoice() && (
+        <div className="p-4 rounded-3xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-rose-800 dark:text-rose-200 text-xs">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-2xl bg-rose-100 dark:bg-rose-900/60 text-rose-600 dark:text-rose-400 shrink-0">
+              <AlertCircle className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="font-bold text-sm">Monthly Invoice Allowance Reached</p>
+              <p className="text-rose-600/90 dark:text-rose-400/90 text-[11px] mt-0.5">
+                You have reached your limit of {getCurrentPlan().invoiceLimit} invoices this month on the{' '}
+                {getCurrentPlan().name}. Upgrade to Starter or Business to create more invoices.
+              </p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            onClick={() =>
+              openModal('upgrade', {
+                trigger: 'Invoice allowance reached. Upgrade to continue creating invoices.',
+              })
+            }
+            className="bg-[#FF7916] hover:bg-[#ea580c] text-white shrink-0 font-bold"
+            icon={<Zap className="w-3.5 h-3.5 fill-current" />}
+          >
+            Upgrade Plan
+          </Button>
+        </div>
+      )}
 
       {/* 2. Main Editor Form */}
       <div className="space-y-6">

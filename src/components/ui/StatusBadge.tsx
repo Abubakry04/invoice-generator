@@ -39,6 +39,20 @@ const statusConfig: Record<
     dot: 'bg-rose-500 animate-pulse',
     border: 'border-rose-200 dark:border-rose-800',
   },
+  partially_paid: {
+    label: 'Partially Paid',
+    bg: 'bg-indigo-50 dark:bg-indigo-950/60',
+    text: 'text-indigo-700 dark:text-indigo-300',
+    dot: 'bg-indigo-500',
+    border: 'border-indigo-200 dark:border-indigo-800',
+  },
+  cancelled: {
+    label: 'Cancelled',
+    bg: 'bg-slate-100 dark:bg-slate-800',
+    text: 'text-slate-500 dark:text-slate-400',
+    dot: 'bg-slate-400',
+    border: 'border-slate-200 dark:border-slate-700',
+  },
 };
 
 export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, className = '', size = 'md' }) => {

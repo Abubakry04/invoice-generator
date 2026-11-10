@@ -1,9 +1,9 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import { Settings } from '../types';
-import { SAMPLE_SETTINGS, SAMPLE_LOGO_DATA_URI } from './sampleData';
+import { useBusinessStore } from './businessStore';
+import { useUiStore } from './uiStore';
 
-interface SettingsState {
+// Adapter hook maintaining seamless backward compatibility and reactive updates
+export interface SettingsState {
   settings: Settings;
   theme: 'light' | 'dark';
   updateSettings: (newSettings: Partial<Settings>) => void;
@@ -13,63 +13,48 @@ interface SettingsState {
   resetSettings: () => void;
 }
 
-export const useSettingsStore = create<SettingsState>()(
-  persist(
-    (set) => ({
-      settings: {
-        ...SAMPLE_SETTINGS,
-        business: {
-          ...SAMPLE_SETTINGS.business,
-          logo: SAMPLE_LOGO_DATA_URI,
-        },
+export const useSettingsStore = (): SettingsState => {
+  const biz = useBusinessStore((state) => {
+    return (
+      state.businesses.find((b) => b.id === state.activeBusinessId) ||
+      state.businesses[0]
+    );
+  });
+  const theme = useUiStore((state) => state.theme);
+
+  return {
+    settings: {
+      ...biz,
+      business: {
+        name: biz.name,
+        email: biz.email,
+        phone: biz.phone,
+        address: biz.address,
+        website: biz.website,
+        taxId: biz.taxId,
+        bankDetails: biz.bankDetails,
+        logo: biz.logo,
       },
-      theme: 'light',
-      updateSettings: (newSettings) =>
-        set((state) => ({
-          settings: { ...state.settings, ...newSettings },
-        })),
-      updateBusiness: (business) =>
-        set((state) => ({
-          settings: {
-            ...state.settings,
-            business: { ...state.settings.business, ...business },
-          },
-        })),
-      setTheme: (theme) => {
-        if (typeof document !== 'undefined') {
-          if (theme === 'dark') {
-            document.documentElement.classList.add('dark');
-          } else {
-            document.documentElement.classList.remove('dark');
-          }
-        }
-        set({ theme });
-      },
-      toggleTheme: () =>
-        set((state) => {
-          const next = state.theme === 'light' ? 'dark' : 'light';
-          if (typeof document !== 'undefined') {
-            if (next === 'dark') {
-              document.documentElement.classList.add('dark');
-            } else {
-              document.documentElement.classList.remove('dark');
-            }
-          }
-          return { theme: next };
-        }),
-      resetSettings: () =>
-        set({
-          settings: {
-            ...SAMPLE_SETTINGS,
-            business: {
-              ...SAMPLE_SETTINGS.business,
-              logo: SAMPLE_LOGO_DATA_URI,
-            },
-          },
-        }),
-    }),
-    {
-      name: 'Egolepay-settings',
-    }
-  )
-);
+    } as Settings,
+    theme,
+    updateSettings: (newSettings) => {
+      const { business, ...rest } = newSettings;
+      useBusinessStore.getState().updateActiveBusiness({
+        ...rest,
+        ...(business || {}),
+      });
+    },
+    updateBusiness: (business) => {
+      useBusinessStore.getState().updateActiveBusiness(business);
+    },
+    setTheme: (t) => {
+      useUiStore.getState().setTheme(t);
+    },
+    toggleTheme: () => {
+      useUiStore.getState().toggleTheme();
+    },
+    resetSettings: () => {
+      useBusinessStore.getState().resetToDefault();
+    },
+  };
+};

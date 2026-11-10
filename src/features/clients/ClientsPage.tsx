@@ -11,6 +11,7 @@ import {
   Trash2,
   FilePlus,
   Receipt,
+  Download,
 } from 'lucide-react';
 import { useClientStore } from '../../store/clientStore';
 import { useInvoiceStore } from '../../store/invoiceStore';
@@ -21,6 +22,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { ClientModal } from './ClientModal';
 import { Client } from '../../types';
+import { exportClientsToCSV } from '../../lib/exportUtils';
 
 export const ClientsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -85,16 +87,26 @@ export const ClientsPage: React.FC = () => {
             Manage your saved client directory and auto-populate invoices with one click.
           </p>
         </div>
-        <Button
-          onClick={() => {
-            setEditingClient(null);
-            setModalOpen(true);
-          }}
-          icon={<Plus className="w-4 h-4" />}
-          size="md"
-        >
-          Add Client
-        </Button>
+        <div className="flex items-center gap-2.5">
+          <Button
+            variant="outline"
+            size="md"
+            onClick={() => exportClientsToCSV(clients, invoices)}
+            icon={<Download className="w-4 h-4" />}
+          >
+            Export CSV
+          </Button>
+          <Button
+            onClick={() => {
+              setEditingClient(null);
+              setModalOpen(true);
+            }}
+            icon={<Plus className="w-4 h-4" />}
+            size="md"
+          >
+            Add Client
+          </Button>
+        </div>
       </div>
 
       {/* Filter and Search Bar */}
@@ -172,6 +184,13 @@ export const ClientsPage: React.FC = () => {
                       <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
                       <span className="line-clamp-2">{client.address}</span>
                     </div>
+                    {client.notes && (
+                      <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800/80">
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 italic line-clamp-2">
+                          "{client.notes}"
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
 

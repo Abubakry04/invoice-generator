@@ -13,7 +13,7 @@ export const invoiceFormSchema = z.object({
   issueDate: z.string().min(1, 'Issue date is required'),
   dueDate: z.string().min(1, 'Due date is required'),
   currency: z.string(),
-  status: z.enum(['draft', 'sent', 'paid', 'overdue']),
+  status: z.enum(['draft', 'sent', 'paid', 'partially_paid', 'overdue', 'cancelled']),
   template: z.enum(['modern', 'classic', 'minimal']),
   accentColor: z.string(),
   business: z.object({

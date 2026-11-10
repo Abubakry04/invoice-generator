@@ -9,10 +9,14 @@ import {
   PlusCircle,
   X,
   ChevronRight,
+  Zap,
+  CreditCard,
 } from 'lucide-react';
 import logoImg from '../../assets/logo3.png';
 import { useProductStore } from '../../store/productStore';
 import { useSettingsStore } from '../../store/settingsStore';
+import { useSubscriptionStore } from '../../store/subscriptionStore';
+import { useUiStore } from '../../store/uiStore';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -22,6 +26,10 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const { products } = useProductStore();
   const { settings } = useSettingsStore();
+  const { subscription, getCurrentPlan } = useSubscriptionStore();
+  const { openModal } = useUiStore();
+
+  const currentPlan = getCurrentPlan();
 
   const lowStockCount = products.filter(
     (p) => p.type === 'product' && (p.stock ?? 0) <= (p.lowStockThreshold ?? 5)
@@ -36,7 +44,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       icon: Package,
       badge: lowStockCount > 0 ? lowStockCount : undefined,
     },
-    { name: 'Clients', to: '/clients', icon: Users },
+    { name: 'Customers', to: '/clients', icon: Users },
+    { name: 'Subscription', to: '/subscription', icon: CreditCard },
     { name: 'Settings', to: '/settings', icon: SettingsIcon },
   ];
 
@@ -122,6 +131,81 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             );
           })}
         </nav>
+
+        {/* Dynamic Plan Badge & Quota Meter tailored to active tier */}
+        <div className="p-3 mx-4 mb-2 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80">
+          <div className="flex items-center justify-between mb-1.5">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-100">
+              <Zap
+                className={`w-3.5 h-3.5 fill-current ${
+                  subscription.planId === 'business'
+                    ? 'text-purple-600 dark:text-purple-400'
+                    : 'text-[#FF7916]'
+                }`}
+              />
+              <span>{currentPlan.name}</span>
+            </div>
+            {subscription.planId !== 'business' && (
+              <button
+                type="button"
+                onClick={() =>
+                  openModal('upgrade', {
+                    targetPlan: subscription.planId === 'free' ? 'starter' : 'business',
+                    trigger: 'Scale your invoicing limits',
+                  })
+                }
+                className="text-[10px] font-bold text-[#FF7916] hover:underline"
+              >
+                Upgrade
+              </button>
+            )}
+          </div>
+
+          {/* Usage Meter */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+              <span>Monthly Invoices</span>
+              <span className="font-mono text-slate-700 dark:text-slate-200 font-semibold">
+                {subscription.invoicesCreatedThisMonth} /{' '}
+                {currentPlan.invoiceLimit === Infinity ? '∞' : currentPlan.invoiceLimit}
+              </span>
+            </div>
+            <div className="w-full h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-300 ${
+                  currentPlan.invoiceLimit !== Infinity &&
+                  subscription.invoicesCreatedThisMonth >= currentPlan.invoiceLimit
+                    ? 'bg-rose-500'
+                    : subscription.planId === 'business'
+                    ? 'bg-purple-600'
+                    : 'bg-[#FF7916]'
+                }`}
+                style={{
+                  width: `${
+                    subscription.invoicesCreatedThisMonth === 0
+                      ? 0
+                      : currentPlan.invoiceLimit === Infinity
+                      ? Math.min(100, Math.round((subscription.invoicesCreatedThisMonth / 50) * 100))
+                      : Math.min(
+                          100,
+                          Math.round(
+                            (subscription.invoicesCreatedThisMonth / currentPlan.invoiceLimit) * 100
+                          )
+                        )
+                  }%`,
+                }}
+              />
+            </div>
+          </div>
+
+          <p className="text-[10px] text-slate-400 mt-2 line-clamp-1">
+            {subscription.planId === 'free'
+              ? 'Up to 5 invoices, single currency'
+              : subscription.planId === 'starter'
+              ? 'Multi-currency & pay links enabled'
+              : 'Unlimited invoices & multi-business'}
+          </p>
+        </div>
 
         {/* Business snippet footer */}
         <div className="p-3 border-t border-slate-200 dark:border-slate-800">

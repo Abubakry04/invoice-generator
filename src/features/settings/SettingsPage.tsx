@@ -14,11 +14,14 @@ import {
   Users,
   Package,
   Sparkles,
+  Lock,
 } from 'lucide-react';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useClientStore } from '../../store/clientStore';
 import { useInvoiceStore } from '../../store/invoiceStore';
 import { useProductStore } from '../../store/productStore';
+import { useSubscriptionStore } from '../../store/subscriptionStore';
+import { useUiStore } from '../../store/uiStore';
 import { useToast } from '../../components/ui/Toast';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -43,9 +46,9 @@ const ACCENT_COLORS = [
 ];
 
 const TEMPLATES: { id: InvoiceTemplate; name: string; desc: string; icon: string }[] = [
-  { id: 'modern', name: 'Modern', desc: 'Vibrant colored header banner, bold totals & rounded table', icon: '🎨' },
-  { id: 'classic', name: 'Classic', desc: 'Timeless corporate double-ruled layout with elegant borders', icon: '🏛️' },
-  { id: 'minimal', name: 'Minimal', desc: 'Understated typographic elegance with clean open spacing', icon: '✨' },
+  { id: 'minimal', name: 'Minimal', desc: 'Understated typographic elegance with clean open spacing (Free)', icon: '✨' },
+  { id: 'classic', name: 'Classic', desc: 'Timeless corporate double-ruled layout with elegant borders (Starter)', icon: '🏛️' },
+  { id: 'modern', name: 'Modern', desc: 'Vibrant colored header banner, bold totals & rounded table (Business)', icon: '🎨' },
 ];
 
 export const SettingsPage: React.FC = () => {
@@ -53,7 +56,13 @@ export const SettingsPage: React.FC = () => {
   const { clients, resetClients, clearClients } = useClientStore();
   const { invoices, resetInvoices, clearInvoices } = useInvoiceStore();
   const { products } = useProductStore();
+  const { hasFeature, isTemplateAllowed, getRequiredPlanForTemplate } =
+    useSubscriptionStore();
+  const { openModal } = useUiStore();
   const toast = useToast();
+
+  const canUseMultiCurrency = hasFeature('multi_currency');
+  const canUseCustomAccent = hasFeature('custom_accent');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -65,6 +74,8 @@ export const SettingsPage: React.FC = () => {
   const [address, setAddress] = useState(settings.business.address || '');
   const [email, setEmail] = useState(settings.business.email || '');
   const [phone, setPhone] = useState(settings.business.phone || '');
+  const [website, setWebsite] = useState(settings.business.website || '');
+  const [taxId, setTaxId] = useState(settings.business.taxId || '');
   const [bankDetails, setBankDetails] = useState(settings.business.bankDetails || '');
   const [logo, setLogo] = useState(settings.business.logo || '');
 
@@ -120,6 +131,8 @@ export const SettingsPage: React.FC = () => {
       address: address.trim(),
       email: email.trim(),
       phone: phone.trim(),
+      website: website.trim(),
+      taxId: taxId.trim(),
       bankDetails: bankDetails.trim(),
       logo,
     });
@@ -151,6 +164,8 @@ export const SettingsPage: React.FC = () => {
     setAddress('41, Industrial Avenue, Sabo, Yaba, Lagos, Nigeria');
     setEmail('hello@egolepay.com');
     setPhone('+234 913 933 0394');
+    setWebsite('https://egolepay.com');
+    setTaxId('23489102-0001');
     setBankDetails(
       'Guaranty Trust Bank (GTBank)\nAccount Name: Egolepay LTD\nAccount No: 0123456789\nSort Code: 058152062'
     );
@@ -303,6 +318,19 @@ export const SettingsPage: React.FC = () => {
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="+234 913 933 0394"
               />
+              <Input
+                label="Company Website"
+                type="url"
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
+                placeholder="https://egolepay.com"
+              />
+              <Input
+                label="Tax Identification / VAT Number"
+                value={taxId}
+                onChange={(e) => setTaxId(e.target.value)}
+                placeholder="e.g. 23489102-0001"
+              />
               <div className="md:col-span-2">
                 <Textarea
                   label="Registered Address"
@@ -341,8 +369,21 @@ export const SettingsPage: React.FC = () => {
                 <Select
                   label="Default Currency"
                   value={currency}
-                  onChange={(e) => setCurrency(e.target.value)}
-                  options={SUPPORTED_CURRENCIES.map((c) => ({ value: c.code, label: c.label }))}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (!canUseMultiCurrency && val !== 'NGN') {
+                      openModal('upgrade', {
+                        targetPlan: 'starter',
+                        trigger: 'Multi-currency invoicing requires the Starter or Business plan.',
+                      });
+                      return;
+                    }
+                    setCurrency(val);
+                  }}
+                  options={SUPPORTED_CURRENCIES.map((c) => ({
+                    value: c.code,
+                    label: canUseMultiCurrency || c.code === 'NGN' ? c.label : `${c.label} 🔒 (Starter)`,
+                  }))}
                 />
               </div>
               <div>
@@ -405,6 +446,31 @@ export const SettingsPage: React.FC = () => {
               </p>
             </div>
 
+            {!isTemplateAllowed('modern') && (
+              <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <Lock className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                  <span className="text-slate-700 dark:text-slate-300">
+                    Template availability: <span className="font-bold text-emerald-600">Minimal</span> (Free),{' '}
+                    <span className="font-bold text-[#FF7916]">Classic</span> (Starter+), and{' '}
+                    <span className="font-bold text-purple-600">Modern</span> (Business).
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    openModal('upgrade', {
+                      targetPlan: isTemplateAllowed('classic') ? 'business' : 'starter',
+                      trigger: 'Unlock premium invoice templates',
+                    })
+                  }
+                  className="font-bold text-[#FF7916] hover:underline shrink-0 ml-2"
+                >
+                  Upgrade
+                </button>
+              </div>
+            )}
+
             {/* Accent Color Picker */}
             <div className="space-y-3">
               <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300">
@@ -414,14 +480,28 @@ export const SettingsPage: React.FC = () => {
               <div className="flex flex-wrap items-center gap-3">
                 {ACCENT_COLORS.map((c) => {
                   const isSelected = accentColor.toLowerCase() === c.value.toLowerCase();
+                  const isBrandOrange = c.value.toLowerCase() === '#ff7916';
+                  const isLocked = !isBrandOrange && !canUseCustomAccent;
+
                   return (
                     <button
                       key={c.value}
                       type="button"
-                      onClick={() => setAccentColor(c.value)}
+                      onClick={() => {
+                        if (isLocked) {
+                          openModal('upgrade', {
+                            targetPlan: 'starter',
+                            trigger: 'Custom brand accent colors require the Starter plan.',
+                          });
+                          return;
+                        }
+                        setAccentColor(c.value);
+                      }}
                       className={`flex items-center gap-2.5 px-3.5 py-2 rounded-2xl border text-xs font-semibold transition-all ${
                         isSelected
                           ? 'border-slate-900 dark:border-white shadow-sm ring-2 ring-offset-2 ring-[#FF7916]'
+                          : isLocked
+                          ? 'border-slate-200 dark:border-slate-800 opacity-50 hover:opacity-80'
                           : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
                       }`}
                     >
@@ -430,6 +510,7 @@ export const SettingsPage: React.FC = () => {
                         style={{ backgroundColor: c.value }}
                       />
                       <span>{c.name}</span>
+                      {isLocked && <Lock className="w-3 h-3 text-slate-400 ml-0.5" />}
                     </button>
                   );
                 })}
@@ -438,9 +519,18 @@ export const SettingsPage: React.FC = () => {
                   <input
                     type="color"
                     value={accentColor}
-                    onChange={(e) => setAccentColor(e.target.value)}
+                    onChange={(e) => {
+                      if (!canUseCustomAccent) {
+                        openModal('upgrade', {
+                          targetPlan: 'starter',
+                          trigger: 'Custom hex color picker requires the Starter plan.',
+                        });
+                        return;
+                      }
+                      setAccentColor(e.target.value);
+                    }}
                     className="w-7 h-7 rounded-lg cursor-pointer border border-slate-300 dark:border-slate-700 p-0.5 bg-transparent"
-                    title="Choose custom color"
+                    title={canUseCustomAccent ? 'Choose custom color' : 'Custom hex picker (Starter Plan)'}
                   />
                   <span className="text-xs font-mono font-semibold text-slate-600 dark:text-slate-300 uppercase">
                     {accentColor}
@@ -458,19 +548,48 @@ export const SettingsPage: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {TEMPLATES.map((t) => {
                   const isSelected = defaultTemplate === t.id;
+                  const isAllowed = isTemplateAllowed(t.id);
+                  const requiredPlan = getRequiredPlanForTemplate(t.id);
+
                   return (
                     <div
                       key={t.id}
-                      onClick={() => setDefaultTemplate(t.id)}
+                      onClick={() => {
+                        if (!isAllowed) {
+                          openModal('upgrade', {
+                            targetPlan: requiredPlan,
+                            trigger: `The "${t.name}" template is available on the ${
+                              requiredPlan === 'starter' ? 'Starter' : 'Business'
+                            } plan.`,
+                          });
+                          return;
+                        }
+                        setDefaultTemplate(t.id);
+                      }}
                       className={`cursor-pointer p-4 rounded-2xl border-2 transition-all relative ${
                         isSelected
                           ? 'border-[#FF7916] bg-orange-50/40 dark:bg-orange-950/20 shadow-xs'
+                          : !isAllowed
+                          ? 'border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 text-slate-400'
                           : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-slate-900'
                       }`}
                     >
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-xl">{t.icon}</span>
-                        {isSelected && <CheckCircle className="w-4 h-4 text-[#FF7916]" />}
+                        {isSelected ? (
+                          <CheckCircle className="w-4 h-4 text-[#FF7916]" />
+                        ) : !isAllowed ? (
+                          <span
+                            className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                              requiredPlan === 'business'
+                                ? 'text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-950/80 border border-purple-200 dark:border-purple-800'
+                                : 'text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/80 border border-amber-200 dark:border-amber-800'
+                            }`}
+                          >
+                            <Lock className="w-2.5 h-2.5" />
+                            {requiredPlan === 'business' ? 'Biz' : 'Starter'}
+                          </span>
+                        ) : null}
                       </div>
                       <h4 className="text-sm font-bold text-slate-900 dark:text-white">{t.name}</h4>
                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t.desc}</p>

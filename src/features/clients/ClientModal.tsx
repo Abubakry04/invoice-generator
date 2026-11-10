@@ -17,6 +17,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({ isOpen, onClose, onSav
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
+  const [notes, setNotes] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -25,11 +26,13 @@ export const ClientModal: React.FC<ClientModalProps> = ({ isOpen, onClose, onSav
       setEmail(client.email);
       setPhone(client.phone || '');
       setAddress(client.address);
+      setNotes(client.notes || '');
     } else {
       setName('');
       setEmail('');
       setPhone('');
       setAddress('');
+      setNotes('');
     }
     setErrors({});
   }, [client, isOpen]);
@@ -56,6 +59,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({ isOpen, onClose, onSav
       email: email.trim(),
       phone: phone.trim() || undefined,
       address: address.trim(),
+      notes: notes.trim() || undefined,
     });
     onClose();
   };
@@ -110,9 +114,18 @@ export const ClientModal: React.FC<ClientModalProps> = ({ isOpen, onClose, onSav
             if (errors.address) setErrors((prev) => ({ ...prev, address: '' }));
           }}
           placeholder="Street, City, State, Country"
-          rows={3}
+          rows={2}
           error={errors.address}
           required
+        />
+
+        <Textarea
+          label="Internal Notes"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="e.g. Terms Net-15, direct contact is Finance VP, annual renewal in Q4"
+          rows={2}
+          helperText="Private notes for your business, not visible to the client."
         />
 
         <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">

@@ -13,6 +13,7 @@ import {
   Loader2,
   Send,
   ArrowLeft,
+  Lock,
 } from 'lucide-react';
 import { Invoice, InvoiceTemplate } from '../../types';
 import { InvoicePreview } from './InvoicePreview';
@@ -20,6 +21,8 @@ import { InvoicePDF } from './InvoicePDF';
 import { pdf } from '@react-pdf/renderer';
 import { useToast } from '../../components/ui/Toast';
 import { Button } from '../../components/ui/Button';
+import { useSubscriptionStore } from '../../store/subscriptionStore';
+import { useUiStore } from '../../store/uiStore';
 
 interface InvoicePreviewModalProps {
   invoice: Invoice;
@@ -33,9 +36,9 @@ const PAPER_WIDTH = 794; // Standard A4 width at 96 DPI
 const PAPER_DEFAULT_HEIGHT = 1123;
 
 const TEMPLATES: { id: InvoiceTemplate; label: string; icon: string }[] = [
-  { id: 'modern', label: 'Modern', icon: '🎨' },
-  { id: 'classic', label: 'Classic', icon: '🏛️' },
   { id: 'minimal', label: 'Minimal', icon: '✨' },
+  { id: 'classic', label: 'Classic', icon: '🏛️' },
+  { id: 'modern', label: 'Modern', icon: '🎨' },
 ];
 
 const WATERMARK_OPTIONS = [
@@ -55,6 +58,8 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
   onSaveAndSend,
 }) => {
   const toast = useToast();
+  const { isTemplateAllowed, getRequiredPlanForTemplate } = useSubscriptionStore();
+  const { openModal } = useUiStore();
   const containerRef = useRef<HTMLDivElement>(null);
   const paperContentRef = useRef<HTMLDivElement>(null);
 
@@ -236,20 +241,48 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
           {/* Template Switcher */}
           <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl text-xs">
             {TEMPLATES.map((tpl) => {
-              const active = (invoice.template || 'modern') === tpl.id;
+              const active = (invoice.template || 'minimal') === tpl.id;
+              const isAllowed = isTemplateAllowed(tpl.id);
+              const requiredPlan = getRequiredPlanForTemplate(tpl.id);
               return (
                 <button
                   key={tpl.id}
                   type="button"
-                  onClick={() => onTemplateChange && onTemplateChange(tpl.id)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all ${
+                  onClick={() => {
+                    if (!isAllowed) {
+                      openModal('upgrade', {
+                        targetPlan: requiredPlan,
+                        trigger: `The "${tpl.label}" template is available on the ${
+                          requiredPlan === 'starter' ? 'Starter' : 'Business'
+                        } plan.`,
+                      });
+                      return;
+                    }
+                    if (onTemplateChange) {
+                      onTemplateChange(tpl.id);
+                    }
+                  }}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
                     active
                       ? 'bg-white dark:bg-slate-900 text-[#FF7916] shadow-xs'
+                      : !isAllowed
+                      ? 'text-slate-400 dark:text-slate-500 hover:text-slate-600'
                       : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
                   }`}
+                  title={!isAllowed ? `Requires ${requiredPlan === 'business' ? 'Business' : 'Starter'} Plan` : tpl.label}
                 >
                   <span>{tpl.icon}</span>
                   <span>{tpl.label}</span>
+                  {!isAllowed && (
+                    <span className={`inline-flex items-center text-[9px] font-bold px-1 py-0.5 rounded ${
+                      requiredPlan === 'business'
+                        ? 'text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-950/80 border border-purple-200 dark:border-purple-800'
+                        : 'text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/80 border border-amber-200 dark:border-amber-800'
+                    }`}>
+                      <Lock className="w-2.5 h-2.5 mr-0.5" />
+                      {requiredPlan === 'business' ? 'Biz' : 'Starter'}
+                    </span>
+                  )}
                 </button>
               );
             })}
