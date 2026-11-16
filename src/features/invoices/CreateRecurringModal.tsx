@@ -40,14 +40,14 @@ export const CreateRecurringModal: React.FC<CreateRecurringModalProps> = ({
   const toast = useToast();
   const { addSchedule } = useRecurringStore();
 
-  if (!isOpen || !invoice) return null;
-
   const [frequency, setFrequency] = useState<RecurringFrequency>('monthly');
   const [startDate, setStartDate] = useState<string>(getTodayDateString());
   const [hasEndDate, setHasEndDate] = useState<boolean>(false);
   const [endDate, setEndDate] = useState<string>('');
   const [autoSend, setAutoSend] = useState<boolean>(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  if (!isOpen || !invoice) return null;
 
   const calculatedNextRun = computeNextRunDate(startDate, frequency);
 

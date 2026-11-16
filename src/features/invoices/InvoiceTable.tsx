@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import {
   Search,
@@ -8,6 +9,7 @@ import {
   Trash2,
   Download,
   MoreVertical,
+  MoreHorizontal,
   CheckCircle,
   Clock,
   Send,
@@ -17,6 +19,8 @@ import {
   Lock,
   CreditCard,
   Repeat,
+  Receipt,
+  XCircle,
 } from 'lucide-react';
 import { Invoice, InvoiceStatus } from '../../types';
 import { calculateTotals } from '../../lib/calculateTotals';
@@ -60,10 +64,66 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterStatus>('all');
   const [selectedInvoiceForView, setSelectedInvoiceForView] = useState<Invoice | null>(null);
+  const [viewModalTab, setViewModalTab] = useState<'document' | 'payments'>('document');
   const [deletingInvoiceId, setDeletingInvoiceId] = useState<string | null>(null);
   const [paymentModalInvoice, setPaymentModalInvoice] = useState<Invoice | null>(null);
   const [recurringModalInvoice, setRecurringModalInvoice] = useState<Invoice | null>(null);
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+  const [menuCoords, setMenuCoords] = useState<{
+    top: number;
+    right: number;
+  } | null>(null);
+
+  // Close floating action menu on window scroll or resize
+  useEffect(() => {
+    if (!activeMenuId) return;
+    const handleClose = () => {
+      setActiveMenuId(null);
+      setMenuCoords(null);
+    };
+    window.addEventListener('scroll', handleClose, true);
+    window.addEventListener('resize', handleClose);
+    return () => {
+      window.removeEventListener('scroll', handleClose, true);
+      window.removeEventListener('resize', handleClose);
+    };
+  }, [activeMenuId]);
+
+  const activeMenuInvoice = useMemo(
+    () => invoices.find((inv) => inv.id === activeMenuId) || null,
+    [invoices, activeMenuId]
+  );
+
+  const handleToggleMenu = (e: React.MouseEvent<HTMLButtonElement>, invoiceId: string) => {
+    e.stopPropagation();
+    if (activeMenuId === invoiceId) {
+      setActiveMenuId(null);
+      setMenuCoords(null);
+      return;
+    }
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - (rect.bottom + 6);
+    const minSpaceNeeded = 360;
+
+    // Always display downward beneath the button. If near the bottom edge, scroll down to provide clearance.
+    if (spaceBelow < minSpaceNeeded) {
+      const scrollNeeded = minSpaceNeeded - spaceBelow + 16;
+      window.scrollBy({ top: scrollNeeded, behavior: 'instant' });
+      const updatedRect = e.currentTarget.getBoundingClientRect();
+      setMenuCoords({
+        top: updatedRect.bottom + 6,
+        right: Math.max(16, window.innerWidth - updatedRect.right),
+      });
+    } else {
+      setMenuCoords({
+        top: rect.bottom + 6,
+        right: Math.max(16, window.innerWidth - rect.right),
+      });
+    }
+
+    setActiveMenuId(invoiceId);
+  };
 
   // Filter & Search
   const filteredInvoices = useMemo(() => {
@@ -316,7 +376,10 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
 
                           {/* View Preview button */}
                           <button
-                            onClick={() => setSelectedInvoiceForView(inv)}
+                            onClick={() => {
+                              setSelectedInvoiceForView(inv);
+                              setViewModalTab('document');
+                            }}
                             className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                             title="Preview Invoice"
                           >
@@ -342,173 +405,19 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                           </button>
 
                           {/* More dropdown trigger */}
-                          <div className="relative inline-block text-left">
-                            <button
-                              onClick={() => setActiveMenuId(isMenuOpen ? null : inv.id)}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                              title="More options"
-                            >
-                              <MoreVertical className="w-4 h-4" />
-                            </button>
-
-                            {/* Dropdown Menu */}
-                            {isMenuOpen && (
-                              <>
-                                <div
-                                  className="fixed inset-0 z-20"
-                                  onClick={() => setActiveMenuId(null)}
-                                />
-                                <div className="absolute right-0 mt-1 w-48 rounded-xl bg-white dark:bg-slate-900 shadow-xl border border-slate-200 dark:border-slate-800 py-1.5 z-30 text-left text-xs">
-                                  {/* Record Payment */}
-                                  {effectiveStatus !== 'paid' && (
-                                    <button
-                                      onClick={() => {
-                                        setActiveMenuId(null);
-                                        setPaymentModalInvoice(inv);
-                                      }}
-                                      className="w-full px-3 py-2 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 flex items-center gap-2 font-semibold"
-                                    >
-                                      <CreditCard className="w-3.5 h-3.5 text-emerald-600" />
-                                      Record Payment
-                                    </button>
-                                  )}
-
-                                  {/* Set as Recurring Retainer */}
-                                  <button
-                                    onClick={() => {
-                                      setActiveMenuId(null);
-                                      setRecurringModalInvoice(inv);
-                                    }}
-                                    className="w-full px-3 py-2 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2"
-                                  >
-                                    <Repeat className="w-3.5 h-3.5 text-[#FF7916]" />
-                                    Set as Recurring Retainer
-                                  </button>
-
-                                  {/* Duplicate */}
-                                  <button
-                                    onClick={() => {
-                                      setActiveMenuId(null);
-                                      onDuplicate(inv.id);
-                                    }}
-                                    className="w-full px-3 py-2 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2"
-                                  >
-                                    <Copy className="w-3.5 h-3.5 text-slate-400" />
-                                    Duplicate Invoice
-                                  </button>
-
-                                  {/* Copy Public Payment Link */}
-                                  <button
-                                    onClick={() => {
-                                      setActiveMenuId(null);
-                                      if (!canUsePaymentPortal) {
-                                        openModal('upgrade', {
-                                          targetPlan: 'starter',
-                                          trigger:
-                                            'Online customer payment links are available on Starter and Business plans.',
-                                        });
-                                        return;
-                                      }
-                                      const url = `${window.location.origin}/pay/${inv.id}`;
-                                      navigator.clipboard.writeText(url);
-                                      toast.success('Public payment portal link copied!');
-                                    }}
-                                    className="w-full px-3 py-2 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-between"
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      <LinkIcon className="w-3.5 h-3.5 text-blue-500" />
-                                      <span>Copy Payment Link</span>
-                                    </div>
-                                    {!canUsePaymentPortal && (
-                                      <span className="text-[9px] font-bold text-amber-600 bg-amber-50 dark:bg-amber-950/60 px-1 py-0.5 rounded flex items-center gap-0.5">
-                                        <Lock className="w-2.5 h-2.5" />
-                                        Starter
-                                      </span>
-                                    )}
-                                  </button>
-
-                                  {/* Open Payment Portal */}
-                                  <button
-                                    onClick={() => {
-                                      setActiveMenuId(null);
-                                      if (!canUsePaymentPortal) {
-                                        openModal('upgrade', {
-                                          targetPlan: 'starter',
-                                          trigger:
-                                            'Online customer payment portal is available on Starter and Business plans.',
-                                        });
-                                        return;
-                                      }
-                                      window.open(`/pay/${inv.id}`, '_blank');
-                                    }}
-                                    className="w-full px-3 py-2 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-between"
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
-                                      <span>Open Pay Portal</span>
-                                    </div>
-                                    {!canUsePaymentPortal && (
-                                      <span className="text-[9px] font-bold text-amber-600 bg-amber-50 dark:bg-amber-950/60 px-1 py-0.5 rounded flex items-center gap-0.5">
-                                        <Lock className="w-2.5 h-2.5" />
-                                        Starter
-                                      </span>
-                                    )}
-                                  </button>
-
-                                  <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
-                                  <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                                    Set Status
-                                  </div>
-
-                                  <button
-                                    onClick={() => {
-                                      setActiveMenuId(null);
-                                      onStatusChange(inv.id, 'paid');
-                                    }}
-                                    className="w-full px-3 py-1.5 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2"
-                                  >
-                                    <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
-                                    Mark as Paid
-                                  </button>
-
-                                  <button
-                                    onClick={() => {
-                                      setActiveMenuId(null);
-                                      onStatusChange(inv.id, 'sent');
-                                    }}
-                                    className="w-full px-3 py-1.5 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2"
-                                  >
-                                    <Send className="w-3.5 h-3.5 text-blue-500" />
-                                    Mark as Sent
-                                  </button>
-
-                                  <button
-                                    onClick={() => {
-                                      setActiveMenuId(null);
-                                      onStatusChange(inv.id, 'draft');
-                                    }}
-                                    className="w-full px-3 py-1.5 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2"
-                                  >
-                                    <Clock className="w-3.5 h-3.5 text-slate-400" />
-                                    Mark as Draft
-                                  </button>
-
-                                  <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
-
-                                  <button
-                                    onClick={() => {
-                                      setActiveMenuId(null);
-                                      setDeletingInvoiceId(inv.id);
-                                    }}
-                                    className="w-full px-3 py-2 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center gap-2 font-medium"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                    Delete Invoice
-                                  </button>
-                                </div>
-                              </>
-                            )}
-                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => handleToggleMenu(e, inv.id)}
+                            className={`p-1.5 rounded-xl transition-all cursor-pointer ${
+                              isMenuOpen
+                                ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white ring-1 ring-slate-300 dark:ring-slate-700 shadow-2xs'
+                                : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                            }`}
+                            title="Invoice actions"
+                            aria-label="Invoice actions"
+                          >
+                            <MoreHorizontal className="w-4 h-4" />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -520,11 +429,319 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
         </div>
       )}
 
+      {/* Floating Action Menu (Mounted outside table to prevent overflow clipping) */}
+      {activeMenuId && activeMenuInvoice && menuCoords && (() => {
+        const effStatus = getEffectiveStatus(activeMenuInvoice);
+        const invTotals = calculateTotals(
+          activeMenuInvoice.items,
+          activeMenuInvoice.discount,
+          activeMenuInvoice.taxRate
+        );
+        const paidAmount = activeMenuInvoice.paidAmount || (effStatus === 'paid' ? invTotals.total : 0);
+        const balanceDue = activeMenuInvoice.outstandingAmount ?? Math.max(0, invTotals.total - paidAmount);
+        const hasPaymentRecords = (activeMenuInvoice.payments && activeMenuInvoice.payments.length > 0) || paidAmount > 0;
+
+        return createPortal(
+          <>
+            {/* Transparent Backdrop overlay */}
+            <div
+              className="fixed inset-0 z-50 bg-transparent"
+              onClick={() => {
+                setActiveMenuId(null);
+                setMenuCoords(null);
+              }}
+            />
+
+            {/* Menu Card */}
+            <div
+              style={{
+                position: 'fixed',
+                top: `${menuCoords.top}px`,
+                right: `${menuCoords.right}px`,
+                maxHeight: `calc(100vh - ${menuCoords.top + 16}px)`,
+              }}
+              className="z-50 w-64 overflow-y-auto rounded-2xl bg-white dark:bg-slate-900 shadow-2xl shadow-slate-900/15 dark:shadow-black/60 border border-slate-200 dark:border-slate-800 p-2 text-left text-xs animate-in fade-in-0 zoom-in-95 duration-100 ease-out ring-1 ring-black/5 dark:ring-white/10 select-none"
+            >
+              {/* Context Header: Number, Client, Balance Due */}
+              <div className="px-3 py-2 bg-slate-50 dark:bg-slate-800/70 rounded-xl mb-1.5 border border-slate-100 dark:border-slate-800">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <span className="font-mono font-bold text-xs text-slate-900 dark:text-white">
+                    {activeMenuInvoice.number}
+                  </span>
+                  <StatusBadge status={effStatus} size="sm" />
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+                  <span className="truncate max-w-[130px] font-medium" title={activeMenuInvoice.client.name}>
+                    {activeMenuInvoice.client.name}
+                  </span>
+                  <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">
+                    {effStatus !== 'paid' && balanceDue > 0
+                      ? `${formatCurrency(balanceDue, activeMenuInvoice.currency)} due`
+                      : formatCurrency(invTotals.total, activeMenuInvoice.currency)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Group 1: Core Document Actions */}
+              <div className="space-y-0.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const inv = activeMenuInvoice;
+                    setActiveMenuId(null);
+                    setMenuCoords(null);
+                    setSelectedInvoiceForView(inv);
+                    setViewModalTab('document');
+                  }}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer group"
+                >
+                  <Eye className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 shrink-0" />
+                  <span>View Details & Preview</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const id = activeMenuInvoice.id;
+                    setActiveMenuId(null);
+                    setMenuCoords(null);
+                    navigate(`/invoices/${id}/edit`);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer group"
+                >
+                  <Edit2 className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 shrink-0" />
+                  <span>Edit Invoice</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const inv = activeMenuInvoice;
+                    setActiveMenuId(null);
+                    setMenuCoords(null);
+                    handleDownloadPdf(inv);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer group"
+                >
+                  <Download className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 shrink-0" />
+                  <span>Download PDF Document</span>
+                </button>
+              </div>
+
+              {/* Group 2: Payments & Client Sharing */}
+              <div className="my-1.5 border-t border-slate-100 dark:border-slate-800" />
+              <div className="px-2.5 pt-1 pb-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Billing & Client Links
+              </div>
+              <div className="space-y-0.5">
+                {effStatus !== 'paid' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const inv = activeMenuInvoice;
+                      setActiveMenuId(null);
+                      setMenuCoords(null);
+                      setPaymentModalInvoice(inv);
+                    }}
+                    className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <CreditCard className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                      <span>Record Payment</span>
+                    </div>
+                    <span className="text-[10px] font-mono font-bold bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded-md">
+                      Collect
+                    </span>
+                  </button>
+                )}
+
+                {hasPaymentRecords && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const inv = activeMenuInvoice;
+                      setActiveMenuId(null);
+                      setMenuCoords(null);
+                      setSelectedInvoiceForView(inv);
+                      setViewModalTab('payments');
+                    }}
+                    className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer group"
+                  >
+                    <Receipt className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                    <span>Payment History & Receipts</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const inv = activeMenuInvoice;
+                    setActiveMenuId(null);
+                    setMenuCoords(null);
+                    const url = `${window.location.origin}/pay/${inv.id}`;
+                    navigator.clipboard.writeText(url);
+                    toast.success('Public customer payment link copied to clipboard!');
+                  }}
+                  className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer group"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <LinkIcon className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                    <span>Copy Customer Payment Link</span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 font-mono">Link</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const inv = activeMenuInvoice;
+                    setActiveMenuId(null);
+                    setMenuCoords(null);
+                    window.open(`/pay/${inv.id}`, '_blank');
+                  }}
+                  className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer group"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <ExternalLink className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <span>View Public Customer Portal</span>
+                  </div>
+                  <span className="text-[10px] text-[#FF7916] font-semibold">Open ↗</span>
+                </button>
+              </div>
+
+              {/* Group 3: Automation & Reusability */}
+              <div className="my-1.5 border-t border-slate-100 dark:border-slate-800" />
+              <div className="px-2.5 pt-1 pb-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Workflow
+              </div>
+              <div className="space-y-0.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const id = activeMenuInvoice.id;
+                    setActiveMenuId(null);
+                    setMenuCoords(null);
+                    onDuplicate(id);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer group"
+                >
+                  <Copy className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  <span>Duplicate as New Invoice</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const inv = activeMenuInvoice;
+                    setActiveMenuId(null);
+                    setMenuCoords(null);
+                    setRecurringModalInvoice(inv);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer group"
+                >
+                  <Repeat className="w-3.5 h-3.5 text-[#FF7916] shrink-0" />
+                  <span>Convert to Recurring Retainer</span>
+                </button>
+              </div>
+
+              {/* Group 4: Status Updates */}
+              <div className="my-1.5 border-t border-slate-100 dark:border-slate-800" />
+              <div className="px-2.5 pt-1 pb-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Change Status
+              </div>
+              <div className="space-y-0.5">
+                {effStatus !== 'paid' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const id = activeMenuInvoice.id;
+                      setActiveMenuId(null);
+                      setMenuCoords(null);
+                      onStatusChange(id, 'paid');
+                    }}
+                    className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
+                  >
+                    <CheckCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                    <span>Mark as Paid</span>
+                  </button>
+                )}
+
+                {effStatus !== 'sent' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const id = activeMenuInvoice.id;
+                      setActiveMenuId(null);
+                      setMenuCoords(null);
+                      onStatusChange(id, 'sent');
+                    }}
+                    className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
+                  >
+                    <Send className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                    <span>Mark as Sent</span>
+                  </button>
+                )}
+
+                {effStatus !== 'draft' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const id = activeMenuInvoice.id;
+                      setActiveMenuId(null);
+                      setMenuCoords(null);
+                      onStatusChange(id, 'draft');
+                    }}
+                    className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
+                  >
+                    <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <span>Revert to Draft</span>
+                  </button>
+                )}
+
+                {effStatus !== 'cancelled' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const id = activeMenuInvoice.id;
+                      setActiveMenuId(null);
+                      setMenuCoords(null);
+                      onStatusChange(id, 'cancelled');
+                    }}
+                    className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
+                  >
+                    <XCircle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                    <span>Void / Cancel Invoice</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Group 5: Destructive */}
+              <div className="my-1.5 border-t border-slate-100 dark:border-slate-800" />
+              <button
+                type="button"
+                onClick={() => {
+                  const id = activeMenuInvoice.id;
+                  setActiveMenuId(null);
+                  setMenuCoords(null);
+                  setDeletingInvoiceId(id);
+                }}
+                className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl font-medium text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer group"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                <span>Delete Invoice</span>
+              </button>
+            </div>
+          </>,
+          document.body
+        );
+      })()}
+
       {/* Quick View Modal */}
       <InvoiceViewModal
         invoice={selectedInvoiceForView}
         isOpen={!!selectedInvoiceForView}
         onClose={() => setSelectedInvoiceForView(null)}
+        initialTab={viewModalTab}
       />
 
       {/* Record Partial / Full Payment Modal */}

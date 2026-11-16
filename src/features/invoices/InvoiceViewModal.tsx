@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal } from '../../components/ui/Modal';
 import { InvoicePreview } from './InvoicePreview';
 import { InvoicePDFDownloadButton } from './InvoicePDFDownloadButton';
@@ -28,20 +28,28 @@ interface InvoiceViewModalProps {
   invoice: Invoice | null;
   isOpen: boolean;
   onClose: () => void;
+  initialTab?: 'document' | 'payments';
 }
 
 export const InvoiceViewModal: React.FC<InvoiceViewModalProps> = ({
   invoice,
   isOpen,
   onClose,
+  initialTab = 'document',
 }) => {
   const navigate = useNavigate();
   const toast = useToast();
   const { deletePaymentRecord, getInvoice } = useInvoiceStore();
 
-  const [activeTab, setActiveTab] = useState<'document' | 'payments'>('document');
+  const [activeTab, setActiveTab] = useState<'document' | 'payments'>(initialTab);
   const [showRecordPayment, setShowRecordPayment] = useState(false);
   const [selectedReceipt, setSelectedReceipt] = useState<PaymentRecord | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setActiveTab(initialTab);
+    }
+  }, [isOpen, initialTab]);
 
   if (!invoice) return null;
 
