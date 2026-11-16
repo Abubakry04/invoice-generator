@@ -24,7 +24,6 @@ export const SubscriptionPage: React.FC = () => {
     getCurrentPlan,
     getRemainingInvoices,
     upgradePlan,
-    resetMonthlyUsage,
   } = useSubscriptionStore();
   const { openModal } = useUiStore();
   const toast = useToast();
@@ -107,17 +106,6 @@ export const SubscriptionPage: React.FC = () => {
               ))}
             </div>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                resetMonthlyUsage();
-                toast.success('Monthly invoice usage count reset to 0');
-              }}
-              className="text-xs border-slate-200 dark:border-slate-700"
-            >
-              Reset Usage
-            </Button>
             <Button
               onClick={() => openModal('upgrade', { trigger: 'Manage your plan & limits' })}
               className="bg-[#FF7916] hover:bg-[#ea580c] active:bg-[#c2410c] text-white font-semibold shadow-xs"
