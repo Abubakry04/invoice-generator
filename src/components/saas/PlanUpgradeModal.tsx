@@ -2,13 +2,10 @@ import React, { useState, useEffect } from 'react';
 import {
   Check,
   Zap,
-  Sparkles,
-  Building2,
   X,
   CreditCard,
   ShieldCheck,
   CheckCircle2,
-  ArrowRight,
   ArrowLeft,
   Lock,
 } from 'lucide-react';
@@ -21,12 +18,22 @@ export const PlanUpgradeModal: React.FC = () => {
   const { subscription, upgradePlan } = useSubscriptionStore();
   const { activeModal, closeModal, modalPayload } = useUiStore();
   const isUpgradeModalOpen = activeModal === 'upgrade';
-  const upgradeModalFeatureTrigger = modalPayload?.trigger || modalPayload;
   const toast = useToast();
+
+  // Safely extract string trigger message without ever passing raw objects to JSX
+  const upgradeModalFeatureTrigger =
+    typeof modalPayload === 'string'
+      ? modalPayload
+      : typeof modalPayload?.trigger === 'string'
+      ? modalPayload.trigger
+      : null;
 
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
   const [selectedPlanForCheckout, setSelectedPlanForCheckout] = useState<SubscriptionPlanId | null>(
-    null
+    () => {
+      const tp = modalPayload?.targetPlan;
+      return tp && tp !== 'free' ? tp : null;
+    }
   );
   const [isProcessing, setIsProcessing] = useState(false);
   const [checkoutComplete, setCheckoutComplete] = useState(false);
@@ -37,14 +44,13 @@ export const PlanUpgradeModal: React.FC = () => {
   const [cardCvc, setCardCvc] = useState('888');
 
   useEffect(() => {
-    if (
-      modalPayload?.targetPlan &&
-      modalPayload.targetPlan !== subscription.planId &&
-      modalPayload.targetPlan !== 'free'
-    ) {
-      setSelectedPlanForCheckout(modalPayload.targetPlan);
+    if (isUpgradeModalOpen) {
+      const tp = modalPayload?.targetPlan;
+      if (tp && tp !== subscription.planId && tp !== 'free') {
+        setSelectedPlanForCheckout(tp);
+      }
     }
-  }, [modalPayload?.targetPlan, subscription.planId]);
+  }, [isUpgradeModalOpen, modalPayload?.targetPlan, subscription.planId]);
 
   if (!isUpgradeModalOpen) return null;
 
@@ -74,11 +80,15 @@ export const PlanUpgradeModal: React.FC = () => {
     e.preventDefault();
     if (!selectedPlanForCheckout) return;
 
-    upgradePlan(selectedPlanForCheckout);
-    toast.success(
-      `🎉 You're now on the ${SUBSCRIPTION_PLANS[selectedPlanForCheckout]?.name || selectedPlanForCheckout.toUpperCase()} plan!`
-    );
-    handleClose();
+    setIsProcessing(true);
+    setTimeout(() => {
+      upgradePlan(selectedPlanForCheckout);
+      setIsProcessing(false);
+      setCheckoutComplete(true);
+      toast.success(
+        `🎉 Workspace upgraded to ${SUBSCRIPTION_PLANS[selectedPlanForCheckout]?.name || selectedPlanForCheckout.toUpperCase()}!`
+      );
+    }, 1000);
   };
 
   const plans = [
@@ -152,7 +162,10 @@ export const PlanUpgradeModal: React.FC = () => {
         {selectedPlanForCheckout && checkoutPlanObj ? (
           <div className="max-w-md mx-auto py-4">
             <button
-              onClick={() => setSelectedPlanForCheckout(null)}
+              onClick={() => {
+                setSelectedPlanForCheckout(null);
+                setCheckoutComplete(false);
+              }}
               className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 mb-6 font-medium transition-colors"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
@@ -169,8 +182,17 @@ export const PlanUpgradeModal: React.FC = () => {
                 </h3>
                 <p className="text-sm text-slate-500 dark:text-slate-400">
                   Your workspace is now upgraded to <strong>{checkoutPlanObj.name}</strong>. All premium
-                  features and unlimited limits are immediately active.
+                  features and limits are immediately active.
                 </p>
+                <div className="pt-4">
+                  <button
+                    type="button"
+                    onClick={handleClose}
+                    className="w-full py-3 px-4 rounded-xl bg-[#FF7916] hover:bg-[#ea580c] text-white font-bold text-xs shadow-md transition-all cursor-pointer"
+                  >
+                    Done & Return to Workspace
+                  </button>
+                </div>
               </div>
             ) : (
               <form onSubmit={handleConfirmPayment} className="space-y-5">
@@ -256,16 +278,26 @@ export const PlanUpgradeModal: React.FC = () => {
                 <div className="space-y-2">
                   <button
                     type="submit"
-                    className="w-full py-3 px-4 rounded-xl bg-[#FF7916] hover:bg-[#ea580c] active:bg-[#c2410c] text-white font-bold text-xs shadow-md shadow-[#FF7916]/25 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    disabled={isProcessing}
+                    className="w-full py-3 px-4 rounded-xl bg-[#FF7916] hover:bg-[#ea580c] active:bg-[#c2410c] text-white font-bold text-xs shadow-md shadow-[#FF7916]/25 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                   >
-                    <ShieldCheck className="w-4 h-4" />
-                    <span>
-                      Confirm & Upgrade to {checkoutPlanObj.name} (
-                      {billingCycle === 'annual'
-                        ? checkoutPlanObj.annualPrice
-                        : checkoutPlanObj.monthlyPrice}
-                      /mo)
-                    </span>
+                    {isProcessing ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Processing Simulated Payment...</span>
+                      </>
+                    ) : (
+                      <>
+                        <ShieldCheck className="w-4 h-4" />
+                        <span>
+                          Confirm & Upgrade to {checkoutPlanObj.name} (
+                          {billingCycle === 'annual'
+                            ? checkoutPlanObj.annualPrice
+                            : checkoutPlanObj.monthlyPrice}
+                          /mo)
+                        </span>
+                      </>
+                    )}
                   </button>
 
                   <button
@@ -275,7 +307,7 @@ export const PlanUpgradeModal: React.FC = () => {
                       toast.success(`🎉 Workspace upgraded to ${checkoutPlanObj.name}!`);
                       handleClose();
                     }}
-                    className="w-full py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 transition-colors"
+                    className="w-full py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
                   >
                     ⚡ Instant Demo Activate (Skip Card Form)
                   </button>
@@ -414,7 +446,7 @@ export const PlanUpgradeModal: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleStartUpgrade(plan.id, false)}
-                          className="w-full text-center text-[10px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 py-1"
+                          className="w-full text-center text-[10px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 py-1 cursor-pointer"
                         >
                           Simulate Stripe Checkout →
                         </button>

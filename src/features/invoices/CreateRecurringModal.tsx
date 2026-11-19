@@ -40,14 +40,14 @@ export const CreateRecurringModal: React.FC<CreateRecurringModalProps> = ({
   const toast = useToast();
   const { addSchedule } = useRecurringStore();
 
-  if (!isOpen || !invoice) return null;
-
   const [frequency, setFrequency] = useState<RecurringFrequency>('monthly');
   const [startDate, setStartDate] = useState<string>(getTodayDateString());
   const [hasEndDate, setHasEndDate] = useState<boolean>(false);
   const [endDate, setEndDate] = useState<string>('');
   const [autoSend, setAutoSend] = useState<boolean>(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  if (!isOpen || !invoice) return null;
 
   const calculatedNextRun = computeNextRunDate(startDate, frequency);
 
@@ -82,17 +82,17 @@ export const CreateRecurringModal: React.FC<CreateRecurringModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 dark:bg-black/80 backdrop-blur-xs">
       <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-orange-100 dark:bg-orange-950/80 text-[#FF7916] flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-orange-100 dark:bg-orange-950/80 text-[#FF7916] flex items-center justify-center shrink-0">
               <Repeat className="w-4 h-4" />
             </div>
             <div>
               <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                Set as Recurring Retainer
+                Set Recurring Retainer
               </h3>
-              <p className="text-xs text-slate-400">
-                Invoice {invoice.number} • {invoice.client.name}
+              <p className="text-[11px] text-slate-400">
+                {invoice.number} • {invoice.client.name}
               </p>
             </div>
           </div>
@@ -106,18 +106,17 @@ export const CreateRecurringModal: React.FC<CreateRecurringModalProps> = ({
         </div>
 
         {/* Informative banner */}
-        <div className="p-4 bg-orange-50/70 dark:bg-orange-950/30 border-b border-orange-100 dark:border-orange-900/50 flex items-start gap-2.5 text-xs text-slate-600 dark:text-slate-300">
+        <div className="p-3.5 sm:p-4 bg-orange-50/70 dark:bg-orange-950/30 border-b border-orange-100 dark:border-orange-900/50 flex items-start gap-2.5 text-xs text-slate-600 dark:text-slate-300">
           <Sparkles className="w-4 h-4 text-[#FF7916] shrink-0 mt-0.5" />
           <p>
-            EgolePay will automatically generate a new invoice cycle with an incremented number,
-            updated dates, and line items on each schedule date.
+            A new invoice cycle will be automatically created with updated dates on each scheduled date.
           </p>
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4">
           <Select
-            label="Billing Cadence / Frequency"
+            label="Frequency"
             value={frequency}
             onChange={(e) => setFrequency(e.target.value as RecurringFrequency)}
             options={FREQUENCY_OPTIONS}
@@ -125,7 +124,7 @@ export const CreateRecurringModal: React.FC<CreateRecurringModalProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input
-              label="Cycle Start Date"
+              label="Start Date"
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
@@ -135,7 +134,7 @@ export const CreateRecurringModal: React.FC<CreateRecurringModalProps> = ({
 
             <div className="space-y-1">
               <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Next Cycle Trigger
+                Next Invoice Date
               </label>
               <div className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-mono font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
                 <Clock className="w-3.5 h-3.5 text-[#FF7916]" />
