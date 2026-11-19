@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
 import {
   Building2,
   Mail,
@@ -25,8 +25,18 @@ export const AuthPage: React.FC = () => {
   const [mode, setMode] = useState<'login' | 'register'>(initialMode);
 
   const navigate = useNavigate();
+  const location = useLocation();
   const toast = useToast();
-  const { login, register } = useAuthStore();
+  const { login, register, isAuthenticated } = useAuthStore();
+
+  const destination = (location.state as any)?.from?.pathname || '/';
+
+  // If already authenticated, redirect to destination or dashboard
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate(destination, { replace: true });
+    }
+  }, [isAuthenticated, navigate, destination]);
 
   // Form fields
   const [name, setName] = useState('');
@@ -73,7 +83,7 @@ export const AuthPage: React.FC = () => {
       }
 
       setIsLoading(false);
-      navigate('/');
+      navigate(destination, { replace: true });
     }, 600);
   };
 
@@ -83,7 +93,7 @@ export const AuthPage: React.FC = () => {
       login(demoEmail);
       setIsLoading(false);
       toast.success(`Signed in as ${demoName}`);
-      navigate('/');
+      navigate(destination, { replace: true });
     }, 300);
   };
 

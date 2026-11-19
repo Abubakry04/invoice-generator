@@ -1,7 +1,19 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { UserProfile } from '../types';
 import { useBusinessStore } from './businessStore';
+
+// Clean up legacy mock auth from localStorage if present so it doesn't auto-login
+if (typeof window !== 'undefined') {
+  try {
+    const legacyAuth = localStorage.getItem('egolepay-auth');
+    if (legacyAuth) {
+      localStorage.removeItem('egolepay-auth');
+    }
+  } catch {
+    // Ignore storage access errors
+  }
+}
 
 interface RegisterData {
   name: string;
@@ -19,19 +31,11 @@ interface AuthState {
   updateProfile: (updates: Partial<UserProfile>) => void;
 }
 
-const DEMO_USER: UserProfile = {
-  id: 'usr-demo-01',
-  name: 'Alex Morgan',
-  email: 'alex@egolepay.io',
-  role: 'owner',
-  avatar: '',
-};
-
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
-      currentUser: DEMO_USER,
-      isAuthenticated: true,
+      currentUser: null,
+      isAuthenticated: false,
 
       login: (email: string, name?: string, role = 'owner') => {
         const userName = name || (email.split('@')[0] ? email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1) : 'Demo User');
@@ -79,6 +83,9 @@ export const useAuthStore = create<AuthState>()(
           currentUser: null,
           isAuthenticated: false,
         });
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem('egolepay-auth-session');
+        }
       },
 
       updateProfile: (updates) => {
@@ -88,7 +95,8 @@ export const useAuthStore = create<AuthState>()(
       },
     }),
     {
-      name: 'egolepay-auth',
+      name: 'egolepay-auth-session',
+      storage: createJSONStorage(() => sessionStorage),
     }
   )
 );
