@@ -111,20 +111,20 @@ export const SubscriptionPage: React.FC = () => {
               className="bg-[#FF7916] hover:bg-[#ea580c] active:bg-[#c2410c] text-white font-semibold shadow-xs"
               icon={<Zap className="w-4 h-4 fill-current" />}
             >
-              Checkout Preview
+              <span className="hidden sm:inline">Checkout Preview</span>
+              <span className="sm:hidden">Upgrade</span>
             </Button>
           </div>
         </div>
 
         {/* Usage Progress Bar */}
         <div className="pt-6">
-          <div className="flex items-center justify-between text-xs mb-2">
-            <span className="font-semibold text-slate-700 dark:text-slate-300">
-              Monthly Invoice Usage
+          <div className="flex items-center justify-between text-xs mb-2 gap-2">
+            <span className="font-semibold text-slate-700 dark:text-slate-300 shrink-0">
+              Monthly Invoices
             </span>
-            <span className="font-mono text-slate-500">
-              {usageCount} / {isUnlimited ? 'Unlimited' : limit} invoices (
-              {isUnlimited ? 'Unmetered' : `${remaining} remaining`})
+            <span className="font-mono text-slate-500 text-right text-[11px] sm:text-xs truncate">
+              {usageCount} / {isUnlimited ? 'Unlimited' : limit} ({isUnlimited ? 'Unmetered' : `${remaining} left`})
             </span>
           </div>
 

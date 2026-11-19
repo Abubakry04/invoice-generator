@@ -8,7 +8,7 @@ import { useToast } from '../../components/ui/Toast';
 import { Button } from '../../components/ui/Button';
 import { InvoiceTable } from './InvoiceTable';
 import { RecurringSchedulesList } from './RecurringSchedulesList';
-import { exportInvoicesToCSV } from '../../lib/exportUtils';
+import { ExportInvoicesModal } from './ExportInvoicesModal';
 import { InvoiceStatus } from '../../types';
 
 export const InvoicesPage: React.FC = () => {
@@ -19,6 +19,7 @@ export const InvoicesPage: React.FC = () => {
   const toast = useToast();
 
   const [activeTab, setActiveTab] = useState<'invoices' | 'recurring'>('invoices');
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   const handleDuplicate = (id: string) => {
     const dup = duplicateInvoice(id, settings.invoicePrefix || 'INV-');
@@ -37,13 +38,12 @@ export const InvoicesPage: React.FC = () => {
     toast.success(`Invoice marked as ${status}`);
   };
 
-  const handleExportCSV = () => {
+  const handleOpenExportModal = () => {
     if (invoices.length === 0) {
-      toast.error('No invoices to export');
+      toast.error('No invoices available to export');
       return;
     }
-    exportInvoicesToCSV(invoices);
-    toast.success('Invoices exported to CSV successfully');
+    setIsExportModalOpen(true);
   };
 
   return (
@@ -59,26 +59,28 @@ export const InvoicesPage: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2 sm:gap-2.5">
           <Button
             type="button"
             variant="outline"
             size="md"
-            onClick={handleExportCSV}
+            onClick={handleOpenExportModal}
             icon={<Download className="w-4 h-4 text-slate-500" />}
             className="text-xs font-semibold"
           >
-            Export CSV
+            <span className="hidden sm:inline">Export Excel / CSV</span>
+            <span className="sm:hidden">Export</span>
           </Button>
 
-          <Button
+          {/* <Button
             onClick={() => navigate('/invoices/new')}
             icon={<Plus className="w-4 h-4" />}
             size="md"
             className="bg-[#FF7916] hover:bg-[#ea580c] text-white font-bold shadow-xs"
           >
-            Create Invoice
-          </Button>
+            <span className="hidden sm:inline">Create Invoice</span>
+            <span className="sm:hidden">New Invoice</span>
+          </Button> */}
         </div>
       </div>
 
@@ -128,6 +130,13 @@ export const InvoicesPage: React.FC = () => {
       ) : (
         <RecurringSchedulesList onCreateNew={() => navigate('/invoices/new')} />
       )}
+
+      {/* Export Date Range Filter Modal */}
+      <ExportInvoicesModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        invoices={invoices}
+      />
     </div>
   );
 };

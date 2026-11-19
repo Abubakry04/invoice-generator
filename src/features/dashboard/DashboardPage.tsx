@@ -174,14 +174,15 @@ export const DashboardPage: React.FC = () => {
               <span>Upgrade Plan</span>
             </button>
           )}
-          <Button
+          {/* <Button
             onClick={() => navigate('/invoices/new')}
             size="md"
             className="bg-[#FF7916] hover:bg-[#ea580c] active:bg-[#c2410c] text-white font-semibold shadow-xs"
             icon={<Plus className="w-4 h-4 stroke-[2.5]" />}
           >
-            Create Invoice
-          </Button>
+            <span className="hidden sm:inline">Create Invoice</span>
+            <span className="sm:hidden">New Invoice</span>
+          </Button> */}
         </div>
       </div>
 
@@ -375,7 +376,7 @@ export const DashboardPage: React.FC = () => {
             onClick={() => navigate('/invoices')}
             className="text-xs font-semibold text-[#FF7916] hover:underline flex items-center gap-1 group"
           >
-            <span>View all invoices ({invoices.length})</span>
+            <span>View all ({invoices.length})</span>
             <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
           </button>
         </div>
@@ -398,77 +399,135 @@ export const DashboardPage: React.FC = () => {
             </Button>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 text-[11px] font-semibold uppercase tracking-wider">
-                  <th className="py-3.5 px-6">Invoice</th>
-                  <th className="py-3.5 px-6">Client</th>
-                  <th className="py-3.5 px-6">Issue Date</th>
-                  <th className="py-3.5 px-6">Due Date</th>
-                  <th className="py-3.5 px-6">Status</th>
-                  <th className="py-3.5 px-6 text-right">Amount</th>
-                  <th className="py-3.5 px-6 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/70">
-                {recentInvoices.map((inv) => {
-                  const effectiveStatus = getEffectiveStatus(inv);
-                  const totals = calculateTotals(inv.items, inv.discount, inv.taxRate);
+          <>
+            {/* Mobile & Reduced Screen Card View (< 1280px) */}
+            <div className="block xl:hidden p-4 space-y-3">
+              {recentInvoices.map((inv) => {
+                const effectiveStatus = getEffectiveStatus(inv);
+                const totals = calculateTotals(inv.items, inv.discount, inv.taxRate);
 
-                  return (
-                    <tr
-                      key={inv.id}
-                      onClick={() => navigate(`/invoices/${inv.id}/edit`)}
-                      className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors cursor-pointer group"
-                    >
-                      <td className="py-4 px-6 font-mono font-bold text-slate-900 dark:text-white group-hover:text-[#FF7916] transition-colors whitespace-nowrap">
+                return (
+                  <div
+                    key={inv.id}
+                    onClick={() => navigate(`/invoices/${inv.id}/edit`)}
+                    className="p-3.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 hover:bg-slate-100/60 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center justify-between gap-2 mb-1.5">
+                      <span className="font-mono font-bold text-sm text-slate-900 dark:text-white">
                         {inv.number}
-                      </td>
-                      <td className="py-4 px-6 text-slate-800 dark:text-slate-200 font-medium">
-                        {inv.client.name}
-                      </td>
-                      <td className="py-4 px-6 text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                        {formatDate(inv.issueDate)}
-                      </td>
-                      <td className="py-4 px-6 text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                        {formatDate(inv.dueDate)}
-                      </td>
-                      <td className="py-4 px-6 whitespace-nowrap">
-                        <StatusBadge status={effectiveStatus} size="sm" />
-                      </td>
-                      <td className="py-4 px-6 font-mono font-bold text-slate-900 dark:text-white text-right whitespace-nowrap">
+                      </span>
+                      <StatusBadge status={effectiveStatus} size="sm" />
+                    </div>
+
+                    <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 line-clamp-1 mb-2">
+                      {inv.client.name}
+                    </p>
+
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800/60 text-xs">
+                      <div className="text-slate-500 dark:text-slate-400 text-[11px]">
+                        <span>Due: {formatDate(inv.dueDate)}</span>
+                      </div>
+                      <span className="font-mono font-bold text-sm text-slate-900 dark:text-white">
                         {formatCurrency(totals.total, inv.currency)}
-                      </td>
-                      <td
-                        className="py-4 px-6 text-right whitespace-nowrap"
-                        onClick={(e) => e.stopPropagation()}
+                      </span>
+                    </div>
+
+                    <div
+                      className="flex items-center justify-end gap-2 pt-2.5 mt-2 border-t border-slate-100 dark:border-slate-800/60"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setSelectedInvoiceForView(inv)}
+                        className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-[#FF7916] text-slate-600 dark:text-slate-300 hover:text-[#FF7916] text-xs font-semibold bg-white dark:bg-slate-800 transition-colors inline-flex items-center gap-1.5"
                       >
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setSelectedInvoiceForView(inv)}
-                            className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-[#FF7916] text-slate-600 dark:text-slate-300 hover:text-[#FF7916] text-xs font-semibold bg-white dark:bg-slate-800 transition-colors inline-flex items-center gap-1.5"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                            <span>View</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => navigate(`/invoices/${inv.id}/edit`)}
-                            className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
-                            title="Edit"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>View</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/invoices/${inv.id}/edit`)}
+                        className="p-1 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
+                        title="Edit"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop View: Clean Table (≥ 1280px) */}
+            <div className="hidden xl:block overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 text-[11px] font-semibold uppercase tracking-wider whitespace-nowrap">
+                    <th className="py-3 px-6 whitespace-nowrap">Invoice</th>
+                    <th className="py-3 px-6 min-w-[150px]">Client</th>
+                    <th className="py-3 px-6 whitespace-nowrap">Due Date</th>
+                    <th className="py-3 px-6 whitespace-nowrap">Status</th>
+                    <th className="py-3 px-6 text-right whitespace-nowrap">Amount</th>
+                    <th className="py-3 px-6 text-right whitespace-nowrap">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/70">
+                  {recentInvoices.map((inv) => {
+                    const effectiveStatus = getEffectiveStatus(inv);
+                    const totals = calculateTotals(inv.items, inv.discount, inv.taxRate);
+
+                    return (
+                      <tr
+                        key={inv.id}
+                        onClick={() => navigate(`/invoices/${inv.id}/edit`)}
+                        className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors cursor-pointer group"
+                      >
+                        <td className="py-3.5 px-6 font-mono font-bold text-slate-900 dark:text-white group-hover:text-[#FF7916] transition-colors whitespace-nowrap">
+                          {inv.number}
+                        </td>
+                        <td className="py-3.5 px-6 text-slate-800 dark:text-slate-200 font-medium min-w-[150px]">
+                          {inv.client.name}
+                        </td>
+                        <td className="py-3.5 px-6 text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                          <div>{formatDate(inv.dueDate)}</div>
+                          <div className="text-[10px] text-slate-400">Issued {formatDate(inv.issueDate)}</div>
+                        </td>
+                        <td className="py-3.5 px-6 whitespace-nowrap">
+                          <StatusBadge status={effectiveStatus} size="sm" />
+                        </td>
+                        <td className="py-3.5 px-6 font-mono font-bold text-slate-900 dark:text-white text-right whitespace-nowrap">
+                          {formatCurrency(totals.total, inv.currency)}
+                        </td>
+                        <td
+                          className="py-3.5 px-6 text-right whitespace-nowrap"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="flex items-center justify-end gap-2 whitespace-nowrap">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedInvoiceForView(inv)}
+                              className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-[#FF7916] text-slate-600 dark:text-slate-300 hover:text-[#FF7916] text-xs font-semibold bg-white dark:bg-slate-800 transition-colors inline-flex items-center gap-1.5"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                              <span>View</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/invoices/${inv.id}/edit`)}
+                              className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                              title="Edit"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 

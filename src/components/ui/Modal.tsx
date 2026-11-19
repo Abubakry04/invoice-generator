@@ -70,9 +70,9 @@ export const Modal: React.FC<ModalProps> = ({
       {/* Modal Dialog */}
       <div
         ref={modalRef}
-        className={`relative w-full ${maxWidthClass} bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 z-10 transition-all transform animate-in fade-in zoom-in-95 duration-200`}
+        className={`relative w-full ${maxWidthClass} bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-4 sm:p-6 z-10 transition-all transform animate-in fade-in zoom-in-95 duration-200 my-auto`}
       >
-        <div className="flex items-start justify-between gap-4 mb-5">
+        <div className="flex items-start justify-between gap-3 mb-4 sm:mb-5">
           <div>
             <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">{title}</h3>
             {description && (

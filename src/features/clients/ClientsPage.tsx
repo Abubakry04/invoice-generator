@@ -87,35 +87,38 @@ export const ClientsPage: React.FC = () => {
             Manage your saved client directory and auto-populate invoices with one click.
           </p>
         </div>
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2 sm:gap-2.5">
           <Button
             variant="outline"
             size="md"
             onClick={() => exportClientsToCSV(clients, invoices)}
             icon={<Download className="w-4 h-4" />}
           >
-            Export CSV
+            <span className="hidden sm:inline">Export CSV</span>
+            <span className="sm:hidden">Export</span>
           </Button>
-          <Button
+          {/* <Button
             onClick={() => {
               setEditingClient(null);
               setModalOpen(true);
             }}
             icon={<Plus className="w-4 h-4" />}
             size="md"
+            className="bg-[#FF7916] hover:bg-[#ea580c] text-white font-bold"
           >
-            Add Client
-          </Button>
+            <span className="hidden sm:inline">Add Client</span>
+            <span className="sm:hidden">New Client</span>
+          </Button> */}
         </div>
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between gap-4">
+      <div className="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between gap-3">
         <div className="w-full sm:max-w-md">
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by client name, email, or address..."
+            placeholder="Search clients..."
             leftAddon={<Search className="w-4 h-4" />}
           />
         </div>

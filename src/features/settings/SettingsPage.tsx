@@ -15,6 +15,9 @@ import {
   Package,
   Sparkles,
   Lock,
+  Download,
+  Cloud,
+  ShieldCheck,
 } from 'lucide-react';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useClientStore } from '../../store/clientStore';
@@ -30,6 +33,9 @@ import { Select } from '../../components/ui/Select';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { SUPPORTED_CURRENCIES } from '../../lib/formatCurrency';
 import { InvoiceTemplate } from '../../types';
+import { exportWorkspaceBackup, restoreWorkspaceBackup } from '../../lib/backupService';
+import { isSupabaseConfigured } from '../../services/supabase/client';
+import { syncLocalToSupabase } from '../../services/supabase/syncService';
 
 type SettingsTab = 'profile' | 'invoicing' | 'branding' | 'data';
 
@@ -91,6 +97,47 @@ export const SettingsPage: React.FC = () => {
   // Confirm dialogs
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
   const [confirmResetOpen, setConfirmResetOpen] = useState(false);
+  const backupFileInputRef = useRef<HTMLInputElement>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const handleExportBackup = () => {
+    exportWorkspaceBackup();
+    toast.success('Workspace snapshot exported successfully (.json)');
+  };
+
+  const handleRestoreFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      const res = restoreWorkspaceBackup(content);
+      if (res.success) {
+        toast.success(`Backup restored! ${res.counts?.invoices ?? 0} invoices and ${res.counts?.clients ?? 0} clients loaded.`);
+      } else {
+        toast.error(res.message);
+      }
+      if (backupFileInputRef.current) backupFileInputRef.current.value = '';
+    };
+    reader.readAsText(file);
+  };
+
+  const handleSyncToCloud = async () => {
+    setIsSyncing(true);
+    try {
+      const res = await syncLocalToSupabase();
+      if (res.success) {
+        toast.success(res.message);
+      } else {
+        toast.error(res.message);
+      }
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   // Handle Logo file upload to base64
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -178,11 +225,11 @@ export const SettingsPage: React.FC = () => {
     toast.success('Sample data restored with realistic invoices and clients');
   };
 
-  const tabs: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
-    { id: 'profile', label: 'Business Profile', icon: <Building2 className="w-4 h-4" /> },
-    { id: 'invoicing', label: 'Invoice Defaults', icon: <Sliders className="w-4 h-4" /> },
-    { id: 'branding', label: 'Branding & Templates', icon: <Palette className="w-4 h-4" /> },
-    { id: 'data', label: 'Data Management', icon: <Database className="w-4 h-4" /> },
+  const tabs: { id: SettingsTab; label: string; mobileLabel: string; icon: React.ReactNode }[] = [
+    { id: 'profile', label: 'Business Profile', mobileLabel: 'Profile', icon: <Building2 className="w-4 h-4" /> },
+    { id: 'invoicing', label: 'Invoice Defaults', mobileLabel: 'Invoicing', icon: <Sliders className="w-4 h-4" /> },
+    { id: 'branding', label: 'Branding & Templates', mobileLabel: 'Branding', icon: <Palette className="w-4 h-4" /> },
+    { id: 'data', label: 'Data Management', mobileLabel: 'Data', icon: <Database className="w-4 h-4" /> },
   ];
 
   return (
@@ -217,14 +264,15 @@ export const SettingsPage: React.FC = () => {
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
+              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap cursor-pointer ${
                 isActive
-                  ? 'bg-white dark:bg-slate-800 text-[#FF7916] shadow-xs'
+                  ? 'bg-white dark:bg-slate-800 text-[#FF7916] shadow-xs font-bold'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-slate-800/50'
               }`}
             >
               {tab.icon}
-              <span>{tab.label}</span>
+              <span className="hidden sm:inline">{tab.label}</span>
+              <span className="sm:hidden">{tab.mobileLabel}</span>
             </button>
           );
         })}
@@ -650,10 +698,97 @@ export const SettingsPage: React.FC = () => {
               </div>
             </div>
 
+            {/* Cloud Database Integration (Supabase) */}
+            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <Cloud className="w-4 h-4 text-blue-500" />
+                    <span>Supabase Cloud Database</span>
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Connect to Supabase for multi-device sync, permanent backup, and live customer portal access.
+                  </p>
+                </div>
+                <span
+                  className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${
+                    isSupabaseConfigured
+                      ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700'
+                  }`}
+                >
+                  <span className={`w-2 h-2 rounded-full ${isSupabaseConfigured ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
+                  {isSupabaseConfigured ? 'Connected' : 'Offline Mode'}
+                </span>
+              </div>
+
+              {isSupabaseConfigured ? (
+                <div className="flex items-center gap-3 pt-1">
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="sm"
+                    icon={<Cloud className="w-4 h-4" />}
+                    onClick={handleSyncToCloud}
+                    disabled={isSyncing}
+                  >
+                    {isSyncing ? 'Syncing to Cloud...' : 'Sync Workspace to Supabase'}
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-200/80 dark:border-slate-800">
+                  Schema and migrations are ready in the <code className="font-mono text-slate-800 dark:text-slate-200">/supabase</code> folder. Add your <code className="font-mono text-slate-800 dark:text-slate-200">VITE_SUPABASE_URL</code> and <code className="font-mono text-slate-800 dark:text-slate-200">VITE_SUPABASE_ANON_KEY</code> to your <code className="font-mono text-slate-800 dark:text-slate-200">.env</code> file to enable cloud sync.
+                </p>
+              )}
+            </div>
+
+            {/* Complete Data Backup & Restore */}
+            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                  <span>Workspace Backup & Migration (.json)</span>
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Save a complete offline copy of your invoices, clients, inventory, and retainers.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3 pt-1">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  icon={<Download className="w-4 h-4" />}
+                  onClick={handleExportBackup}
+                >
+                  Download Backup (.json)
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  icon={<Upload className="w-4 h-4" />}
+                  onClick={() => backupFileInputRef.current?.click()}
+                >
+                  Restore from Backup
+                </Button>
+
+                <input
+                  ref={backupFileInputRef}
+                  type="file"
+                  accept=".json,application/json"
+                  className="hidden"
+                  onChange={handleRestoreFileSelect}
+                />
+              </div>
+            </div>
+
             {/* Actions */}
             <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-4">
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                Workspace Actions
+                Workspace Reset
               </h3>
               <div className="flex flex-wrap items-center gap-3">
                 <Button

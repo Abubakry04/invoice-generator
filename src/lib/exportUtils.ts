@@ -3,11 +3,16 @@ import { calculateTotals } from './calculateTotals';
 import { getEffectiveStatus } from './dates';
 
 /**
- * Escapes field for CSV (RFC 4180 standard)
+ * Escapes field for CSV (RFC 4180 standard) and neutralizes CSV Formula Injection (CWE-1236)
  */
 function escapeCSV(val: unknown): string {
   if (val === null || val === undefined) return '""';
-  const str = String(val).replace(/"/g, '""');
+  let str = String(val);
+  // Defend against Spreadsheet Formula Injection: prepend ' if value starts with formula triggers
+  if (/^[=+\-@\t\r]/.test(str)) {
+    str = "'" + str;
+  }
+  str = str.replace(/"/g, '""');
   return `"${str}"`;
 }
 
@@ -26,10 +31,46 @@ export function downloadCSV(filename: string, csvContent: string): void {
   URL.revokeObjectURL(url);
 }
 
+export interface ExportDateRangeOptions {
+  startDate?: string;
+  endDate?: string;
+  dateField?: 'issueDate' | 'dueDate';
+  status?: string;
+}
+
 /**
- * Exports complete invoices ledger to CSV
+ * Filters invoices by date range and optional status for export
  */
-export function exportInvoicesToCSV(invoices: Invoice[]): void {
+export function filterInvoicesForExport(
+  invoices: Invoice[],
+  options?: ExportDateRangeOptions
+): Invoice[] {
+  if (!options) return invoices;
+  const { startDate, endDate, dateField = 'issueDate', status } = options;
+
+  return invoices.filter((inv) => {
+    if (status && status !== 'all') {
+      const effStatus = getEffectiveStatus(inv);
+      if (effStatus !== status && inv.status !== status) {
+        return false;
+      }
+    }
+    const targetDate = inv[dateField];
+    if (startDate && targetDate && targetDate < startDate) return false;
+    if (endDate && targetDate && targetDate > endDate) return false;
+    return true;
+  });
+}
+
+/**
+ * Exports complete invoices ledger to CSV (compatible with Microsoft Excel, Google Sheets, Numbers)
+ */
+export function exportInvoicesToCSV(
+  invoices: Invoice[],
+  options?: ExportDateRangeOptions
+): { count: number; filename: string } {
+  const targetInvoices = filterInvoicesForExport(invoices, options);
+
   const headers = [
     'Invoice Number',
     'Client Name',
@@ -52,7 +93,7 @@ export function exportInvoicesToCSV(invoices: Invoice[]): void {
     'Created At',
   ];
 
-  const rows = invoices.map((inv) => {
+  const rows = targetInvoices.map((inv) => {
     const totals = calculateTotals(inv.items, inv.discount, inv.taxRate);
     const effStatus = getEffectiveStatus(inv);
     const paid = inv.paidAmount || (effStatus === 'paid' ? totals.total : 0);
@@ -83,8 +124,18 @@ export function exportInvoicesToCSV(invoices: Invoice[]): void {
   });
 
   const csvContent = [headers.join(','), ...rows].join('\r\n');
-  const dateStr = new Date().toISOString().slice(0, 10);
-  downloadCSV(`invoices-export-${dateStr}.csv`, csvContent);
+  
+  let filename = `invoices-export-${new Date().toISOString().slice(0, 10)}.csv`;
+  if (options?.startDate && options?.endDate) {
+    filename = `invoices_${options.startDate}_to_${options.endDate}.csv`;
+  } else if (options?.startDate) {
+    filename = `invoices_from_${options.startDate}.csv`;
+  } else if (options?.endDate) {
+    filename = `invoices_until_${options.endDate}.csv`;
+  }
+
+  downloadCSV(filename, csvContent);
+  return { count: targetInvoices.length, filename };
 }
 
 /**

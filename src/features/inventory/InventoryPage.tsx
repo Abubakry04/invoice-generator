@@ -140,19 +140,21 @@ export const InventoryPage: React.FC = () => {
             Inventory & Catalog
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Track on-hand stock counters, monitor low stock alerts, and save services for quick invoicing.
+            Track products, stock levels, and services.
           </p>
         </div>
-        <Button
+        {/* <Button
           onClick={() => {
             setEditingProduct(null);
             setModalOpen(true);
           }}
           icon={<Plus className="w-4 h-4" />}
           size="md"
+          className="bg-[#FF7916] hover:bg-[#ea580c] text-white font-bold"
         >
-          Add Item
-        </Button>
+          <span className="hidden sm:inline">Add Item</span>
+          <span className="sm:hidden">New Item</span>
+        </Button> */}
       </div>
 
       {/* 4 Metric Summary Cards */}
@@ -199,7 +201,7 @@ export const InventoryPage: React.FC = () => {
           }`}
         >
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Low Stock Warnings</span>
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Low Stock</span>
             <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400">
               <AlertTriangle className="w-4 h-4" />
             </div>
@@ -208,7 +210,7 @@ export const InventoryPage: React.FC = () => {
             {stats.lowStockCount}
           </div>
           <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-            {stats.lowStockCount > 0 ? 'Click to filter items needing restock' : 'All product stock levels healthy'}
+            {stats.lowStockCount > 0 ? 'Items below minimum threshold' : 'All stock levels healthy'}
           </p>
         </div>
 
@@ -316,18 +318,149 @@ export const InventoryPage: React.FC = () => {
           icon={<Package className="w-8 h-8 text-slate-400" />}
         />
       ) : (
-        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/75 dark:bg-slate-800/50 text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  <th className="py-3.5 px-4 sm:px-6">Item / Name</th>
-                  <th className="py-3.5 px-4">Category</th>
-                  <th className="py-3.5 px-4">Unit Price</th>
-                  <th className="py-3.5 px-4">Stock Counter</th>
-                  <th className="py-3.5 px-4 sm:px-6 text-right">Actions</th>
-                </tr>
-              </thead>
+        <>
+          {/* Mobile & Reduced Screen Card View (< 1280px) */}
+          <div className="block xl:hidden space-y-3">
+            {filteredProducts.map((item) => {
+              const isProduct = item.type === 'product';
+              const stock = item.stock ?? 0;
+              const threshold = item.lowStockThreshold ?? 5;
+              const isOutOfStock = isProduct && stock === 0;
+              const isLowStock = isProduct && stock > 0 && stock <= threshold;
+
+              return (
+                <div
+                  key={item.id}
+                  className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-sm text-slate-900 dark:text-white">
+                          {item.name}
+                        </span>
+                        {item.sku && (
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500">
+                            {item.sku}
+                          </span>
+                        )}
+                      </div>
+                      {item.description && (
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
+                          {item.description}
+                        </p>
+                      )}
+                    </div>
+                    {isProduct ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 shrink-0">
+                        <Package className="w-3 h-3" />
+                        Product
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 shrink-0">
+                        <Wrench className="w-3 h-3" />
+                        Service
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between py-2.5 border-t border-slate-100 dark:border-slate-800/80 my-2 text-xs">
+                    <div>
+                      <span className="text-[11px] text-slate-400 block mb-0.5">Price</span>
+                      <span className="font-mono font-bold text-base text-slate-900 dark:text-white">
+                        {formatCurrency(item.unitPrice, currency)}
+                      </span>
+                    </div>
+
+                    {isProduct && (
+                      <div className="flex items-center gap-2">
+                        {isOutOfStock ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400">
+                            Out of Stock
+                          </span>
+                        ) : isLowStock ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400">
+                            Low: {stock}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400">
+                            {stock} in stock
+                          </span>
+                        )}
+
+                        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5">
+                          <button
+                            type="button"
+                            onClick={() => handleQuickStockAdjust(item.id, item.name, -1)}
+                            disabled={stock <= 0}
+                            title="Decrease stock"
+                            className="p-1 rounded text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 disabled:opacity-30 transition-colors"
+                          >
+                            <MinusCircle className="w-3.5 h-3.5" />
+                          </button>
+                          <span className="text-xs font-mono font-bold px-1 text-slate-700 dark:text-slate-300">
+                            {stock}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleQuickStockAdjust(item.id, item.name, 1)}
+                            title="Increase stock"
+                            className="p-1 rounded text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 transition-colors"
+                          >
+                            <PlusCircle className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/80">
+                    <button
+                      type="button"
+                      onClick={() => handleCreateInvoiceWithItem(item)}
+                      className="px-2.5 py-1.5 rounded-xl text-xs font-semibold text-[#FF7916] bg-orange-50 dark:bg-orange-950/40 hover:bg-orange-100 dark:hover:bg-orange-900/60 transition-colors inline-flex items-center gap-1.5"
+                    >
+                      <FilePlus className="w-3.5 h-3.5" />
+                      <span>Invoice Item</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingProduct(item);
+                        setModalOpen(true);
+                      }}
+                      className="p-1.5 rounded-xl text-slate-500 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                      title="Edit item"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeletingProduct(item)}
+                      className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                      title="Delete item"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop Large View: Table (≥ 1280px) */}
+          <div className="hidden xl:block bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/75 dark:bg-slate-800/50 text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap">
+                    <th className="py-3.5 px-4 sm:px-6 min-w-[180px]">Item</th>
+                    <th className="py-3.5 px-4 whitespace-nowrap">Category</th>
+                    <th className="py-3.5 px-4 whitespace-nowrap">Price</th>
+                    <th className="py-3.5 px-4 whitespace-nowrap">Stock</th>
+                    <th className="py-3.5 px-4 sm:px-6 text-right whitespace-nowrap">Actions</th>
+                  </tr>
+                </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-sm">
                 {filteredProducts.map((item) => {
                   const isProduct = item.type === 'product';
@@ -472,7 +605,8 @@ export const InventoryPage: React.FC = () => {
             </table>
           </div>
         </div>
-      )}
+      </>
+    )}
 
       {/* Product Add / Edit Modal */}
       <ProductModal
